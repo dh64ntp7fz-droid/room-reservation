@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: room-reservation
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3456
+      - key: WECOM_WEBHOOK_URL
+        sync: false

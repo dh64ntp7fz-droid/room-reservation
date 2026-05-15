@@ -2,9 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 3456;
+const WECOM_WEBHOOK_URL = process.env.WECOM_WEBHOOK_URL || '';
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
 
@@ -29,6 +32,67 @@ function loadData() {
 
 function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+// 企业微信机器人消息推送
+async function sendWecomNotification(type, booking) {
+  if (!WECOM_WEBHOOK_URL) return;
+  
+  const dateParts = (booking.date || '').split('-');
+  const month = parseInt(dateParts[1]) || '?';
+  const day = parseInt(dateParts[2]) || '?';
+  const phoneDisplay = booking.phone ? booking.phone : '无';
+  
+  let title, content;
+  if (type === 'created') {
+    title = '📋 包间预订成功';
+    content = `尊敬的${booking.name}先生/女士，您好！您已成功预订湘阁里辣（大朗环球店）：\n` +
+      `• 包间号/台号：**${booking.room}**\n` +
+      `• 预定时间：**${month}月${day}号 ${booking.time}**\n` +
+      `• 预定人数：**${booking.people}人**\n` +
+      `• 预留手机：**${phoneDisplay}**\n` +
+      `• 到店指引：可[点击导航](https://surl.amap.com/flASiCC19gwW)，餐厅有地面停车场，消费免停2小时\n` +
+      `• 服务电话：0769-82238202\n` +
+      `\n湘阁里辣大朗环球店全体伙伴恭候您的到来！`;
+  } else if (type === 'deleted') {
+    title = '⚠️ 预订已取消';
+    content = `尊敬的${booking.name}先生/女士，您好！您已取消湘阁里辣（大朗环球店）预订：\n` +
+      `• 包间号/台号：**${booking.room}**\n` +
+      `• 原定时间：**${month}月${day}号 ${booking.time}**\n` +
+      `• 原定人数：**${booking.people}人**\n` +
+      `\n如有需要可重新预订。`;
+  } else { return; }
+  
+  const body = JSON.stringify({
+    msgtype: 'markdown',
+    markdown: { content: `## ${title}\n${content}` }
+  });
+  
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(WECOM_WEBHOOK_URL);
+      const mod = u.protocol === 'https:' ? https : http;
+      const req = mod.request({
+        hostname: u.hostname,
+        port: u.port,
+        path: u.pathname + u.search,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      }, (res) => {
+        console.log(`📱 WeCom通知: ${type} ${booking.room} → ${res.statusCode}`);
+        resolve();
+      });
+      req.on('error', (err) => {
+        console.error(`📱 WeCom通知失败: ${err.message}`);
+        resolve();
+      });
+      req.write(body);
+      req.end();
+    } catch(e) {
+      console.error(`📱 WeCom通知URL解析失败: ${e.message}`);
+      resolve();
+    }
+  });
 }
 
 function notifyAll(event, data) {
@@ -86,6 +150,7 @@ app.post('/api/bookings', (req, res) => {
   data.bookings.push(booking);
   saveData(data);
   notifyAll('updated', { action: 'created', booking });
+  sendWecomNotification('created', booking);
   res.json(booking);
 });
 
@@ -126,6 +191,7 @@ app.delete('/api/bookings/:id', (req, res) => {
   const removed = data.bookings.splice(idx, 1)[0];
   saveData(data);
   notifyAll('updated', { action: 'deleted', id: removed.id, room: removed.room, date: removed.date });
+  sendWecomNotification('deleted', removed);
   res.json({ success: true });
 });
 
