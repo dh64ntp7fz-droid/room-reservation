@@ -1,15 +1,3 @@
 {
-  "bookings": [
-    {
-      "id": "mp6t9x5zwad3w",
-      "room": "爱晚亭",
-      "name": "邹",
-      "phone": "",
-      "people": 4,
-      "time": "11:00",
-      "date": "2026-05-15",
-      "createdAt": "2026-05-15T11:05:37.319Z",
-      "updatedAt": "2026-05-15T11:05:37.319Z"
-    }
-  ]
+  "bookings": []
 }
