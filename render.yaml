@@ -7,5 +7,15 @@ services:
     envVars:
       - key: PORT
         value: 3456
+      - key: SMS_SECRET_ID
+        sync: false
+      - key: SMS_SECRET_KEY
+        sync: false
+      - key: SMS_SDK_APP_ID
+        sync: false
+      - key: SMS_SIGN_NAME
+        value: 湘阁里辣
+      - key: SMS_TEMPLATE_ID
+        sync: false
       - key: WECOM_WEBHOOK_URL
         sync: false

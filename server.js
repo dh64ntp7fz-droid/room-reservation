@@ -35,6 +35,106 @@ function saveData(data) {
 }
 
 // 企业微信机器人消息推送
+// 腾讯云短信推送（需要配置环境变量）
+async function sendSmsNotification(type, booking) {
+  const secretId = process.env.SMS_SECRET_ID;
+  const secretKey = process.env.SMS_SECRET_KEY;
+  const sdkAppId = process.env.SMS_SDK_APP_ID;
+  const signName = process.env.SMS_SIGN_NAME || '湘阁里辣';
+  const templateId = process.env.SMS_TEMPLATE_ID || '';
+  
+  if (!secretId || !secretKey || !sdkAppId || !templateId) {
+    console.log('⚠️ SMS 凭证未配置，跳过短信推送');
+    return;
+  }
+  if (!booking.phone) {
+    console.log('⚠️ 无手机号，跳过短信推送');
+    return;
+  }
+  
+  const dateParts = (booking.date || '').split('-');
+  const month = String(parseInt(dateParts[1]) || '?');
+  const day = String(parseInt(dateParts[2]) || '?');
+  const phoneDisplay = booking.phone || '无';
+  
+  // 模板参数（需根据腾讯云短信模板实际变量顺序调整）
+  const templateParams = type === 'created' 
+    ? [booking.name, booking.room, month, day, booking.time, String(booking.people), phoneDisplay]
+    : [booking.name, booking.room, month, day, booking.time, String(booking.people)];
+  
+  const payload = JSON.stringify({
+    SmsSdkAppId: parseInt(sdkAppId),
+    SignName: signName,
+    TemplateId: templateId,
+    TemplateParamSet: templateParams,
+    PhoneNumberSet: ['+86' + booking.phone],
+    SessionContext: ''
+  });
+  
+  // 使用腾讯云 API v3 签名（简化版，生产环境建议用 SDK）
+  const crypto = require('crypto');
+  const now = Math.floor(Date.now() / 1000);
+  const date = new Date().toISOString().slice(0, 10);
+  const service = 'sms';
+  const host = 'sms.tencentcloudapi.com';
+  const action = 'SendSms';
+  const version = '2021-01-11';
+  const algorithm = 'TC3-HMAC-SHA256';
+  
+  const canonicalHeaders = `content-type:application/json
+host:${host}
+x-tc-action:${action.toLowerCase()}
+`;
+  const hashedRequestPayload = crypto.createHash('sha256').update(payload).digest('hex');
+  const canonicalRequest = `POST
+/
+
+${canonicalHeaders}
+${hashedRequestPayload}`;
+  const hashedCanonicalRequest = crypto.createHash('sha256').update(canonicalRequest).digest('hex');
+  const credentialScope = `${date}/${service}/tc3_request`;
+  const stringToSign = `${algorithm}
+${now}
+${credentialScope}
+${hashedCanonicalRequest}`;
+  
+  const kDate = crypto.createHmac('sha256', (`TC3${secretKey}`).toString('utf8')).update(date).digest();
+  const kService = crypto.createHmac('sha256', kDate).update(service).digest();
+  const kSigning = crypto.createHmac('sha256', kService).update('tc3_request').digest();
+  const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+  
+  const authorization = `${algorithm} Credential=${secretId}/${credentialScope}, SignedHeaders=content-type;host;x-tc-action, Signature=${signature}`;
+  
+  const https = require('https');
+  const options = {
+    hostname: host, port: 443, path: '/',
+    method: 'POST', headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(payload),
+      'Host': host,
+      'X-TC-Action': action,
+      'X-TC-Version': version,
+      'X-TC-Region': 'ap-guangzhou',
+      'X-TC-Timestamp': String(now),
+      'Authorization': authorization
+    }
+  };
+  
+  return new Promise((resolve) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', d => data += d);
+      res.on('end', () => {
+        console.log(`📲 SMS推送: ${type} ${booking.room} →`, res.statusCode, data.slice(0, 100));
+        resolve();
+      });
+    });
+    req.on('error', (e) => { console.error('📲 SMS推送失败:', e.message); resolve(); });
+    req.write(payload);
+    req.end();
+  });
+}
+
 async function sendWecomNotification(type, booking) {
   if (!WECOM_WEBHOOK_URL) return;
   
@@ -46,7 +146,7 @@ async function sendWecomNotification(type, booking) {
   let title, content;
   if (type === 'created') {
     title = '📋 包间预订成功';
-    content = `尊敬的${booking.name}先生/女士，您好！您已成功预订湘阁里辣（大朗环球店）：\n` +
+    content = `尊敬的${booking.name}，您好！您已成功预订湘阁里辣（大朗环球店）：\n` +
       `• 包间号/台号：**${booking.room}**\n` +
       `• 预定时间：**${month}月${day}号 ${booking.time}**\n` +
       `• 预定人数：**${booking.people}人**\n` +
@@ -56,7 +156,7 @@ async function sendWecomNotification(type, booking) {
       `\n湘阁里辣大朗环球店全体伙伴恭候您的到来！`;
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
-    content = `尊敬的${booking.name}先生/女士，您好！您已取消湘阁里辣（大朗环球店）预订：\n` +
+    content = `尊敬的${booking.name}，您好！您已取消湘阁里辣（大朗环球店）预订：\n` +
       `• 包间号/台号：**${booking.room}**\n` +
       `• 原定时间：**${month}月${day}号 ${booking.time}**\n` +
       `• 原定人数：**${booking.people}人**\n` +
@@ -151,6 +251,7 @@ app.post('/api/bookings', (req, res) => {
   saveData(data);
   notifyAll('updated', { action: 'created', booking });
   sendWecomNotification('created', booking);
+  sendSmsNotification('created', booking);
   res.json(booking);
 });
 
@@ -192,6 +293,7 @@ app.delete('/api/bookings/:id', (req, res) => {
   saveData(data);
   notifyAll('updated', { action: 'deleted', id: removed.id, room: removed.room, date: removed.date });
   sendWecomNotification('deleted', removed);
+  sendSmsNotification('deleted', removed);
   res.json({ success: true });
 });
 
