@@ -1,0 +1,28 @@
+app = "xgll-room-booking"
+primary_region = "nrt"
+
+[build]
+  builder = "heroku/buildpacks:20"
+
+[[mounts]]
+  source = "booking_data"
+  destination = "/data"
+
+[[services]]
+  internal_port = 3456
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[env]
+  DATA_DIR = "/data"
+  NODE_ENV = "production"
