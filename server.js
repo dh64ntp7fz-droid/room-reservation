@@ -583,7 +583,7 @@ async function sendWecomNotification(type, booking, storeName) {
 • 预留手机：${phoneDisplay}
 • 特别备注：${booking.note || '无'}
 • 到店指引：餐厅有地面停车场，消费免停2小时
-• 导航：https://surl.amap.com/flASiCC19gwW
+• 导航：https://wb.amap.com/?p=B0LAK6CZ0S%2C22.956028514841694%2C113.92054349184035%2C%E6%B9%98%E9%98%81%E9%87%8C%E8%BE%A3(%E5%A4%A7%E6%9C%97%E7%8E%AF%E7%90%83%E5%B9%BF%E5%9C%BA%E5%BA%97)%2C%E5%A4%A7%E6%9C%97%E9%95%87%E5%AF%8C%E5%BA%B7%E8%B7%AF%E7%8E%AF%E7%90%83%E8%B4%B8%E6%98%93%E5%B9%BF%E5%9C%BAA%E5%8C%BA1%E6%A5%BC101
 • 服务电话：0769-82238202
 
 湘阁里辣${storeName}全体伙伴恭候您的到来！`;
