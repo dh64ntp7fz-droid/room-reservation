@@ -28,7 +28,7 @@ body {
   background:#fff; border-radius:16px; padding:36px 32px; width:380px; max-width:90vw;
   text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);
 }
-.login-box .logo { height:64px; margin-bottom:12px; }
+.logo-icon { font-size:48px; margin-bottom:8px; }
 .login-box h2 { font-size:22px; margin-bottom:4px; color:var(--primary); }
 .login-box .sub { font-size:13px; color:var(--text-light); margin-bottom:20px; }
 .login-box input {
@@ -53,7 +53,7 @@ body {
   border-bottom:2px solid rgba(201,169,110,0.55);
 }
 .header-brand { display:flex; align-items:center; gap:12px; }
-.header-logo { height:42px; filter:drop-shadow(0 1px 2px rgba(255,255,255,0.15)); }
+.header-logo-icon { font-size:32px; filter:drop-shadow(0 1px 2px rgba(255,255,255,0.15)); }
 .header-title { display:flex; flex-direction:column; }
 .header-store { font-size:17px; font-weight:700; letter-spacing:2px; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,0.3); }
 .header-subtitle { font-size:12px; font-weight:400; opacity:.7; letter-spacing:3px; color:var(--gold); }
@@ -97,36 +97,53 @@ body {
 @media(max-width:680px) { .room-grid { grid-template-columns:repeat(3,1fr); gap:8px; } }
 @media(max-width:420px) { .room-grid { grid-template-columns:repeat(2,1fr); gap:6px; } }
 
+/* ── 桌台卡片 ── */
 .room-card {
-  background:var(--card-bg); border-radius:var(--radius); padding:14px;
+  background:var(--card-bg); border-radius:var(--radius); padding:16px 14px 14px;
   text-align:center; box-shadow:var(--shadow); position:relative;
-  overflow:hidden; transition:all .2s; cursor:default;
+  overflow:hidden; transition:all .25s; cursor:pointer;
+  border:2px solid transparent;
 }
-.room-card.booked { background:var(--red-bg); cursor:pointer; }
-.room-card.booked:hover { box-shadow:var(--shadow-lg); transform:translateY(-2px); }
-.room-card:hover { box-shadow:var(--shadow-lg); }
+.room-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.room-card:not(.booked):hover { border-color:var(--green); }
+/* 彩色顶部条 */
 .room-card::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; }
-.room-card:not(.booked)::before { background:var(--green); }
-.room-card.booked::before { background:var(--red); }
-.room-card .edit-hint { font-size:11px; color:var(--text-light); margin-top:4px; }
-.room-name { font-size:16px; font-weight:700; margin-top:6px; margin-bottom:6px; }
+.room-card.cat-named::before { background:linear-gradient(90deg,var(--primary),#E87A7A); }
+.room-card.cat-b::before { background:linear-gradient(90deg,var(--blue),#64B5F6); }
+.room-card.cat-a::before { background:linear-gradient(90deg,var(--green),#81C784); }
+/* 已预订背景 */
+.room-card.booked.cat-named { background:linear-gradient(135deg,#FFF0F0,#FFE0E0); border-color:#E8B4B4; }
+.room-card.booked.cat-b { background:linear-gradient(135deg,#E3F0FF,#D0E3FF); border-color:#A8C8F0; }
+.room-card.booked.cat-a { background:linear-gradient(135deg,#E6F5E6,#D0ECD0); border-color:#A8D0A8; }
+.room-card.booked:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,0.14); }
+.room-card .edit-hint { position:absolute; top:12px; right:12px; font-size:11px; color:var(--text-light); opacity:0; transition:opacity .2s; }
+.room-card:hover .edit-hint { opacity:0.7; }
+.room-name { font-size:17px; font-weight:700; margin-top:6px; margin-bottom:6px; }
+.room-category { font-size:11px; color:var(--text-light); margin-bottom:6px; }
 .room-status {
-  display:inline-block; font-size:12px; padding:2px 10px; border-radius:20px; margin-bottom:8px;
+  display:inline-flex; align-items:center; gap:6px; font-size:13px;
+  font-weight:700; padding:4px 12px; border-radius:20px; margin-bottom:8px;
 }
-.room-status.free { background:var(--green-bg); color:var(--green); }
-.room-status.booked { background:var(--red-bg); color:var(--red); }
+.room-status.free { color:var(--green); background:var(--green-bg); }
+.room-status.booked { color:#B71C1C; background:rgba(183,28,28,0.1); }
+.room-status .status-dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
 .room-booking-info {
-  font-size:12px; color:var(--text-light); background:var(--bg); padding:6px 8px;
-  border-radius:8px; margin-bottom:6px; line-height:1.6;
+  font-size:13px; color:var(--text-light); background:rgba(255,255,255,0.6);
+  padding:8px 10px; border-radius:8px; margin-bottom:8px; line-height:1.8;
 }
+.room-booking-info strong { color:var(--text); }
+.room-time-tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-right:4px; }
+.room-time-tag.morning { background:#FFF3E0; color:#E65100; }
+.room-time-tag.afternoon { background:#F3E5F5; color:#6A1B9A; }
 .room-action {
-  padding:6px 16px; border:none; border-radius:8px; font-size:13px;
-  font-weight:600; cursor:pointer; font-family:inherit; transition:all .2s;
+  display:inline-block; margin-top:6px; padding:7px 16px; border:none;
+  border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+  font-family:inherit; transition:all .2s; width:100%; text-align:center;
 }
-.room-action.free-action { background:var(--green-bg); color:var(--green); }
-.room-action.free-action:hover { background:var(--green); color:#fff; }
-.room-action.booked-action { background:var(--red-bg); color:var(--red); }
-.room-action.booked-action:hover { background:var(--red); color:#fff; }
+.room-action.free-action { background:var(--gold-light); color:var(--primary); }
+.room-action.free-action:hover { background:var(--gold); color:#fff; }
+.room-action.booked-action { background:rgba(0,0,0,0.06); color:var(--text); }
+.room-action.booked-action:hover { background:rgba(0,0,0,0.12); }
 
 /* ── 预订记录 ── */
 .tab-bar { display:flex; gap:6px; }
@@ -237,19 +254,22 @@ body {
 /* ── 手机端优化 ── */
 @media (max-width: 680px) {
   .header { padding:10px 14px; border-bottom-width:1px; }
-  .header-logo { height:32px; }
+  .header-logo-icon { font-size:28px; }
   .header-store { font-size:14px; letter-spacing:1px; }
   .header-subtitle { font-size:10px; letter-spacing:2px; }
   .header-brand { gap:8px; }
   .date-picker { padding:6px 10px; font-size:13px; }
   .status-badge { font-size:11px; padding:4px 10px; }
+  #liveClock { font-size:11px; }
   .admin-btn { font-size:11px; padding:5px 8px; }
   .main { padding:16px 10px; }
   .section-title { font-size:15px; margin-bottom:12px; }
   .room-card { padding:10px 8px; border-radius:10px; }
   .room-card::before { height:3px; }
   .room-name { font-size:13px; margin-top:4px; margin-bottom:4px; }
+  .room-category { font-size:10px; margin-bottom:4px; }
   .room-status { font-size:11px; padding:2px 8px; margin-bottom:6px; }
+  .room-time-tag { font-size:10px; padding:1px 6px; }
   .room-booking-info { font-size:11px; padding:4px 6px; line-height:1.5; }
   .room-action { padding:5px 10px; font-size:11px; margin-top:6px; }
   .room-card .edit-hint { display:none; }
@@ -268,20 +288,20 @@ body {
 <!-- ── 登录页 ── -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
-    <img src="logo.png" alt="湘阁里辣" class="logo">
+    <div class="logo-icon">🌶️</div>
     <h2>包间预订系统</h2>
     <div class="sub">请输入账号密码登录</div>
     <input type="text" id="loginUsername" placeholder="用户名" autocomplete="username">
     <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password">
     <button class="btn-login" onclick="doLogin()">登 录</button>
-    <div class="login-hint">默认管理员：xgll2122 / 2122</div>
+
   </div>
 </div>
 
 <!-- ── Header ── -->
 <div class="header">
   <div class="header-brand">
-    <img src="logo.png" alt="湘阁里辣" class="header-logo">
+    <div class="header-logo-icon">🌶️</div>
     <div class="header-title">
       <div class="header-store" id="storeNameDisplay">湘阁里辣</div>
       <div class="header-subtitle">包 间 预 订</div>
@@ -291,6 +311,7 @@ body {
     <div class="status-badge" id="connectionBadge">
       <span class="dot live"></span><span id="connText">实时</span>
     </div>
+    <span id="liveClock" style="font-size:13px;opacity:.8;color:#fff;min-width:50px;text-align:center"></span>
     <input type="date" class="date-picker" id="datePicker">
     <button class="admin-btn" id="adminBtn" onclick="toggleAdmin()" style="display:none">⚙️</button>
     <button class="logout-btn" onclick="doLogout()">退出</button>
@@ -393,6 +414,14 @@ body {
         <label>人数<span class="req">*</span></label>
         <input type="number" id="formPeople" placeholder="预订人数" min="1">
       </div>
+    </div>
+    <div class="form-group">
+      <label>时段<span class="req">*</span></label>
+      <select id="formPeriod">
+        <option value="morning">🌅 上午（10:00-14:00）</option>
+        <option value="afternoon">🌙 下午（14:00-22:00）</option>
+        <option value="allday">⭐ 全天</option>
+      </select>
     </div>
     <div class="form-group">
       <label>手机号</label>
@@ -536,6 +565,13 @@ function connectSSE() {
 }
 
 // ── 渲染桌台网格 ──
+function getCatClass(table) {
+  if (table.category === '包间') return 'cat-named';
+  if (table.name && table.name.startsWith('B')) return 'cat-b';
+  if (table.name && table.name.startsWith('A')) return 'cat-a';
+  return 'cat-named';
+}
+
 function renderGrid() {
   const grid = document.getElementById('roomGrid');
   const bookedMap = {};
@@ -544,26 +580,34 @@ function renderGrid() {
   });
   
   grid.innerHTML = state.tables.map(t => {
+    const catClass = getCatClass(t);
+    const catLabel = t.category || '';
     const booking = bookedMap[t.name];
+    
     if (booking) {
       const dp = (booking.date||'').split('-');
       const ds = `${parseInt(dp[1])||'?'}/${parseInt(dp[2])||'?'}`;
-      return `<div class="room-card booked" onclick="editBooking('${booking.id}')">
+      const mins = timeToMinutes(booking.time);
+      const timeTag = mins < 840
+        ? '<span class="room-time-tag morning">🌅 上午</span>'
+        : '<span class="room-time-tag afternoon">🌙 下午</span>';
+      return `<div class="room-card booked ${catClass}" onclick="editBooking('${booking.id}')">
+        <div class="edit-hint">点击编辑</div>
         <div class="room-name">${t.name}</div>
-        <div class="room-status booked">已预订</div>
+        <div class="room-category">${catLabel}</div>
+        <div class="room-status booked"><span class="status-dot"></span>已预订 ${timeTag}</div>
         <div class="room-booking-info">
-          ${booking.name} · ${booking.people}人<br>
+          <strong>${booking.name}</strong> · ${booking.people}人<br>
           ${ds} ${booking.time}
         </div>
         <button class="room-action booked-action" onclick="event.stopPropagation();cancelBooking('${booking.id}')">取消</button>
-        <div class="edit-hint">点击编辑</div>
       </div>`;
     }
-    return `<div class="room-card">
+    return `<div class="room-card ${catClass}">
       <div class="room-name">${t.name}</div>
-      <div class="room-status free">空闲</div>
-      <div style="font-size:11px;color:var(--text-light);margin-bottom:4px">${t.category||''}</div>
-      <button class="room-action free-action" onclick="openBooking('${t.name}')">预订</button>
+      <div class="room-category">${catLabel}</div>
+      <div class="room-status free"><span class="status-dot"></span>空闲</div>
+      <button class="room-action free-action" onclick="openBooking('${t.name}')">📝 预订</button>
     </div>`;
   }).join('');
 }
@@ -615,6 +659,8 @@ function openBooking(presetTable) {
   document.getElementById('modalTitle').textContent = '📝 预订登记';
   document.getElementById('formDate').value = state.date;
   document.getElementById('formTime').value = '18:00';
+  const period = document.getElementById('formPeriod');
+  if (period) period.value = 'afternoon';
   document.getElementById('formName').value = '';
   document.getElementById('formPeople').value = '';
   document.getElementById('formPhone').value = '';
@@ -637,6 +683,11 @@ function editBooking(id) {
   document.getElementById('formName').value = booking.name;
   document.getElementById('formPeople').value = booking.people;
   document.getElementById('formPhone').value = booking.phone || '';
+  const period = document.getElementById('formPeriod');
+  if (period) {
+    const mins = timeToMinutes(booking.time);
+    period.value = mins < 840 ? 'morning' : 'afternoon';
+  }
   document.getElementById('submitBtn').textContent = '保存修改';
   document.getElementById('submitBtn').className = 'btn btn-primary';
   
@@ -659,9 +710,17 @@ function buildTableCheckGrid() {
   const grid = document.getElementById('tableCheckGrid');
   const count = document.getElementById('tableCount');
   
+  const formDate = document.getElementById('formDate').value;
+  const formTime = document.getElementById('formTime').value;
+  const formMinutes = timeToMinutes(formTime);
+  
+  // 只禁用同一日期、同一桌台、且时间冲突（前后2小时内）的
   const bookedTables = new Set();
   state.bookings.forEach(b => {
-    if (b.id !== state.editId && b.date === document.getElementById('formDate').value) {
+    if (b.id === state.editId) return;
+    if (b.date !== formDate) return;
+    const bMinutes = timeToMinutes(b.time);
+    if (Math.abs(formMinutes - bMinutes) < 120) {
       (b.tables || []).forEach(t => bookedTables.add(t));
     }
   });
@@ -833,7 +892,7 @@ async function loadUsers() {
         </div>
         <div>
           <button class="add-btn" onclick="resetPwd('${u.username}')" style="font-size:11px;padding:4px 8px">改密</button>
-          ${u.username!=='admin' ? `<button class="delete-table-btn" onclick="deleteUser('${u.username}')" style="margin-left:4px">删除</button>` : ''}
+          ${u.username!=='xgll2122' ? `<button class="delete-table-btn" onclick="deleteUser('${u.username}')" style="margin-left:4px">删除</button>` : ''}
         </div>
       </div>
     `).join('') || '<div class="no-data">暂无用户</div>';
@@ -911,6 +970,54 @@ async function loadAdminData() {
     });
     state.history = await r.json();
   } catch {}
+}
+
+// ── 工具函数 ──
+function timeToMinutes(t) {
+  if (!t) return 0;
+  const [h,m] = t.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+// ── 日期/时间变化时自动推断时段 ──
+document.addEventListener('DOMContentLoaded', () => {
+  // 监听弹窗时间变化，自动切换时段
+  setTimeout(() => {
+    const formTime = document.getElementById('formTime');
+    if (formTime) {
+      formTime.addEventListener('change', () => {
+        const minutes = timeToMinutes(formTime.value);
+        const period = document.getElementById('formPeriod');
+        if (period) {
+          if (minutes < 840) period.value = 'morning'; // 14:00之前
+          else period.value = 'afternoon';
+        }
+        buildTableCheckGrid();
+      });
+    }
+    const formDate = document.getElementById('formDate');
+    if (formDate) {
+      formDate.addEventListener('change', () => buildTableCheckGrid());
+    }
+  }, 500);
+
+  // 实时时钟
+  updateClock();
+  setInterval(updateClock, 30000);
+});
+
+function updateClock() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+  const el = document.getElementById('liveClock');
+  if (el) el.textContent = t;
+  // 自动更新今天日期
+  const today = now.toLocaleDateString('zh-CN').replace(/\//g, '-');
+  const dp = document.getElementById('datePicker');
+  if (dp && dp.value !== today) {
+    dp.value = today;
+    state.date = today;
+  }
 }
 
 // ── Toast ──
