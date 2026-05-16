@@ -583,7 +583,7 @@ async function sendWecomNotification(type, booking, storeName) {
 • 预留手机：${phoneDisplay}
 • 特别备注：${booking.note || '无'}
 • 免费停车：餐厅有地面停车场，消费免停2小时
-[点击导航](https://surl.amap.com/flASiCC19gwW)
+• [点击导航](https://surl.amap.com/flASiCC19gwW)
 • 服务电话：0769-82238202
 
 湘阁里辣${storeName}全体伙伴恭候您的到来！`;
