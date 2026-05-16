@@ -24,7 +24,7 @@ if (DATA_DIR !== __dirname && !fs.existsSync(DATA_DIR)) {
 }
 
 let clients = [];
-let lastResetDate = '';
+let lastResetDate = null;
 
 app.use(cors());
 app.use(express.json());
@@ -134,6 +134,17 @@ function getDateString() {
 // ── 自动清空 ──
 function checkAutoReset() {
   const today = getDateString();
+  
+  // 首次运行：从数据文件恢复 lastResetDate，避免服务器重启误清空预订
+  if (lastResetDate === null) {
+    try {
+      const d = loadData();
+      lastResetDate = d.meta?.lastReset || today;
+    } catch {
+      lastResetDate = today;
+    }
+  }
+  
   if (today === lastResetDate) return;
   lastResetDate = today;
   
@@ -151,10 +162,29 @@ function checkAutoReset() {
     }
   }
   data.meta.lastReset = today;
+  
+  // 清理超过7天的历史记录
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  let cleanedCount = 0;
+  for (const storeId in data.stores) {
+    const store = data.stores[storeId];
+    if (store.history && store.history.length > 0) {
+      const before = store.history.length;
+      store.history = store.history.filter(h => {
+        const t = new Date(h.archivedAt || h.cancelledAt || h.createdAt).getTime();
+        return t > sevenDaysAgo;
+      });
+      cleanedCount += before - store.history.length;
+    }
+  }
+  
   saveData(data);
   if (resetCount > 0) {
     console.log(`🔄 凌晨自动清空: ${resetCount} 条预订已移至历史`);
     notifyAll('reset', { date: today, count: resetCount });
+  }
+  if (cleanedCount > 0) {
+    console.log(`🗑️ 清理历史记录: ${cleanedCount} 条超过7天的记录已删除`);
   }
 }
 
@@ -245,7 +275,7 @@ app.post('/api/store/:storeId/bookings', (req, res) => {
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
   
-  const { tables, name, phone, people, time, date } = req.body;
+  const { tables, name, phone, people, time, date, note } = req.body;
   if (!tables || !tables.length || !name || !people || !time || !date) {
     return res.status(400).json({ error: '请填写完整信息（桌台/姓名/人数/时间/日期为必填）' });
   }
@@ -269,7 +299,7 @@ app.post('/api/store/:storeId/bookings', (req, res) => {
   
   const booking = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-    tables, name, phone: phone || '', people: parseInt(people), time, date,
+    tables, name, phone: phone || '', people: parseInt(people), time, date, note: note || '',
     createdBy: user.username,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -294,7 +324,7 @@ app.put('/api/store/:storeId/bookings/:id', (req, res) => {
   const idx = (store.bookings || []).findIndex(b => b.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: '预订不存在' });
   
-  const { tables, name, phone, people, time, date } = req.body;
+  const { tables, name, phone, people, time, date, note } = req.body;
   if (!tables || !tables.length || !name || !people || !time || !date) {
     return res.status(400).json({ error: '请填写完整信息' });
   }
@@ -318,7 +348,7 @@ app.put('/api/store/:storeId/bookings/:id', (req, res) => {
   
   store.bookings[idx] = {
     ...store.bookings[idx], tables, name, phone: phone || '',
-    people: parseInt(people), time, date,
+    people: parseInt(people), time, date, note: note || '',
     updatedAt: new Date().toISOString()
   };
   saveData(data);
@@ -360,17 +390,17 @@ app.get('/api/store/:storeId/history/export', (req, res) => {
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
   
-  const BOM = '\\ufeff';
-  const headers = ['日期', '时间', '桌台', '姓名', '手机', '人数', '状态', '创建人', '创建时间', '取消/归档时间'];
+  const BOM = '\ufeff';
+  const headers = ['日期', '时间', '桌台', '姓名', '手机', '人数', '备注', '状态', '创建人', '创建时间', '取消/归档时间'];
   const rows = (store.history || []).map(b => {
     const dp = (b.date || '').split('-');
     const ds = `${dp[0]}年${parseInt(dp[1])}月${parseInt(dp[2])}日`;
     const status = b.status === 'cancelled' ? '已取消' : (b.status === 'auto_reset' ? '已清空' : '已完成');
-    return [ds, b.time, (b.tables || []).join('/'), b.name, b.phone || '', String(b.people), status, b.createdBy || '', b.createdAt || '', b.cancelledAt || b.archivedAt || '']
+    return [ds, b.time, (b.tables || []).join('/'), b.name, b.phone || '', String(b.people), b.note || '', status, b.createdBy || '', b.createdAt || '', b.cancelledAt || b.archivedAt || '']
       .map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
   });
   
-  const csv = BOM + [headers.join(','), ...rows].join('\\n');
+  const csv = BOM + [headers.join(','), ...rows].join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${store.name}_历史记录_${getDateString()}.csv"`);
   res.send(csv);
@@ -545,32 +575,24 @@ async function sendWecomNotification(type, booking, storeName) {
   
   let title, content;
   if (type === 'created') {
-    title = '👋 包间预订成功';
+    title = '📋 包间预订成功';
     content = `尊敬的${booking.name}，您好！您已成功预订湘阁里辣（${storeName}）：` +
       `\n• 包间号/台号：${tablesDisplay}` +
-      `\n• 预定时间：${month}月${day}日 ${booking.time}` +
+      `\n• 预定时间：${month}月${day}号 ${booking.time}` +
       `\n• 预定人数：${booking.people}人` +
       `\n• 预留手机：${phoneDisplay}` +
       `\n• 特别备注：${booking.note || '无'}` +
-      `\n• 到店指引：可点击导航 https://surl.amap.com/flASiCC19gwW，餐厅有地面停车场，消费免停2小时，服务电话 0769-82238202。` +
+      `\n• 到店指引：可点击导航，餐厅有地面停车场，消费免停2小时\n• 服务电话：0769-82238202` +
       `\n\n湘阁里辣${storeName}全体伙伴恭候您的到来！`;
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
-    content = `尊敬的${booking.name}，您好！
-您已取消湘阁里辣（${storeName}）的预订：` +
-      `
-• 包间号/台号：${tablesDisplay}` +
-      `
-• 预定时间：${month}月${day}号 ${booking.time}` +
-      `
-• 预定人数：${booking.people}人` +
-      `
-• 预留手机：${booking.phone || '无'}` +
-      `
-• 特别备注：${booking.note || '无'}` +
-      `
-
-感谢您的理解，欢迎下次光临！`;
+    content = `尊敬的${booking.name}，您好！\n您已取消湘阁里辣（${storeName}）的预订：` +
+      `\n• 包间号/台号：${tablesDisplay}` +
+      `\n• 预定时间：${month}月${day}号 ${booking.time}` +
+      `\n• 预定人数：${booking.people}人` +
+      `\n• 预留手机：${booking.phone || '无'}` +
+      `\n• 特别备注：${booking.note || '无'}` +
+      `\n\n感谢您的理解，欢迎下次光临！`;
   } else return;
   
   const body = JSON.stringify({ msgtype: 'markdown', markdown: { content: `## ${title}\n${content}` } });
