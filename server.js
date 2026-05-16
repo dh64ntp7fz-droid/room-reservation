@@ -551,15 +551,27 @@ async function sendWecomNotification(type, booking, storeName) {
       `\n• 预定时间：${month}月${day}号 ${booking.time}` +
       `\n• 预定人数：${booking.people}人` +
       `\n• 预留手机：${phoneDisplay}` +
-      `\n• 备注：${booking.note || '无'}` +
+      `\n• 特别备注：${booking.note || '无'}` +
       `\n• 到店指引：可点击导航，餐厅有地面停车场，消费免停2小时` +
       `\n• 服务电话：0769-82238202` +
       `\n\n湘阁里辣${storeName}全体伙伴恭候您的到来！`;
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
-    content = `尊敬的${booking.name}，您好！您已取消湘阁里辣（${storeName}）预订：\\n` +
-      `• 桌台号：${tablesDisplay}\\n• 原定时间：${month}月${day}日 ${booking.time}\\n` +
-      `• 原定人数：${booking.people}人\\n\\n感谢您的理解，欢迎下次光临！`;
+    content = `尊敬的${booking.name}，您好！
+您已取消湘阁里辣（${storeName}）的预订：` +
+      `
+• 包间号/台号：${tablesDisplay}` +
+      `
+• 预定时间：${month}月${day}号 ${booking.time}` +
+      `
+• 预定人数：${booking.people}人` +
+      `
+• 预留手机：${booking.phone || '无'}` +
+      `
+• 特别备注：${booking.note || '无'}` +
+      `
+
+感谢您的理解，欢迎下次光临！`;
   } else return;
   
   const body = JSON.stringify({ msgtype: 'markdown', markdown: { content: `## ${title}\\n${content}` } });
