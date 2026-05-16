@@ -145,6 +145,14 @@ body {
 .room-action.booked-action { background:rgba(0,0,0,0.06); color:var(--text); }
 .room-action.booked-action:hover { background:rgba(0,0,0,0.12); }
 
+/* ── 卡片双按钮行 ── */
+.room-actions-row { display:flex; gap:6px; margin-top:6px; }
+.room-actions-row button { flex:1; padding:5px 0; font-size:12px; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .2s; }
+.room-actions-row .btn-cancel { background:rgba(0,0,0,0.06); color:var(--text); }
+.room-actions-row .btn-cancel:hover { background:rgba(0,0,0,0.12); }
+.room-actions-row .btn-add { background:var(--gold-light); color:var(--primary); border:1px solid var(--gold); }
+.room-actions-row .btn-add:hover { background:var(--gold); color:#fff; }
+
 /* ── 预订记录 ── */
 .tab-bar { display:flex; gap:6px; }
 .tab-btn {
@@ -416,16 +424,12 @@ body {
       </div>
     </div>
     <div class="form-group">
-      <label>时段<span class="req">*</span></label>
-      <select id="formPeriod">
-        <option value="morning">🌅 上午（10:00-14:00）</option>
-        <option value="afternoon">🌙 下午（14:00-22:00）</option>
-        <option value="allday">⭐ 全天</option>
-      </select>
-    </div>
-    <div class="form-group">
       <label>手机号</label>
       <input type="tel" id="formPhone" placeholder="选填">
+    </div>
+    <div class="form-group">
+      <label>备注</label>
+      <textarea id="formNote" placeholder="选填" rows="2"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal()">取消</button>
@@ -600,7 +604,10 @@ function renderGrid() {
           <strong>${booking.name}</strong> · ${booking.people}人<br>
           ${ds} ${booking.time}
         </div>
-        <button class="room-action booked-action" onclick="event.stopPropagation();cancelBooking('${booking.id}')">取消</button>
+        <div class="room-actions-row">
+          <button class="btn-cancel" onclick="event.stopPropagation();cancelBooking('${booking.id}')">取消</button>
+          <button class="btn-add" onclick="event.stopPropagation();openBooking()">+ 新增</button>
+        </div>
       </div>`;
     }
     return `<div class="room-card ${catClass}">
@@ -659,11 +666,10 @@ function openBooking(presetTable) {
   document.getElementById('modalTitle').textContent = '📝 预订登记';
   document.getElementById('formDate').value = state.date;
   document.getElementById('formTime').value = '18:00';
-  const period = document.getElementById('formPeriod');
-  if (period) period.value = 'afternoon';
   document.getElementById('formName').value = '';
   document.getElementById('formPeople').value = '';
   document.getElementById('formPhone').value = '';
+  document.getElementById('formNote').value = '';
   document.getElementById('submitBtn').textContent = '确认预订';
   document.getElementById('submitBtn').className = 'btn btn-primary';
   
@@ -683,11 +689,7 @@ function editBooking(id) {
   document.getElementById('formName').value = booking.name;
   document.getElementById('formPeople').value = booking.people;
   document.getElementById('formPhone').value = booking.phone || '';
-  const period = document.getElementById('formPeriod');
-  if (period) {
-    const mins = timeToMinutes(booking.time);
-    period.value = mins < 840 ? 'morning' : 'afternoon';
-  }
+  document.getElementById('formNote').value = booking.note || '';
   document.getElementById('submitBtn').textContent = '保存修改';
   document.getElementById('submitBtn').className = 'btn btn-primary';
   
@@ -746,11 +748,12 @@ async function submitBooking() {
   const name = document.getElementById('formName').value.trim();
   const people = document.getElementById('formPeople').value.trim();
   const phone = document.getElementById('formPhone').value.trim();
+  const note = document.getElementById('formNote').value.trim();
   
   if (!tables.length) { toast('请选择至少一张桌台', 'error'); return; }
   if (!date || !time || !name || !people) { toast('请填写完整信息（桌台/日期/时间/姓名/人数为必填）', 'error'); return; }
   
-  const body = { tables, date, time, name, people, phone };
+  const body = { tables, date, time, name, people, phone, note };
   
   try {
     let r;

@@ -545,12 +545,16 @@ async function sendWecomNotification(type, booking, storeName) {
   
   let title, content;
   if (type === 'created') {
-    title = '📋 预订成功';
-    content = `尊敬的${booking.name}，您好！您已成功预订湘阁里辣（${storeName}）：\\n` +
-      `• 桌台号：${tablesDisplay}\\n• 时间：${month}月${day}日 ${booking.time}\\n` +
-      `• 人数：${booking.people}人\\n• 手机：${phoneDisplay}\\n` +
-      `• 导航：https://surl.amap.com/flASiCC19gwW\\n` +
-      `• 电话：0769-82238202\\n\\n湘阁里辣${storeName}全体伙伴恭候您的到来！`;
+    title = '📋 包间预订成功';
+    content = `尊敬的${booking.name}，您好！您已成功预订湘阁里辣（${storeName}）：` +
+      `\n• 包间号/台号：${tablesDisplay}` +
+      `\n• 预定时间：${month}月${day}号 ${booking.time}` +
+      `\n• 预定人数：${booking.people}人` +
+      `\n• 预留手机：${phoneDisplay}` +
+      `\n• 备注：${booking.note || '无'}` +
+      `\n• 到店指引：可点击导航，餐厅有地面停车场，消费免停2小时` +
+      `\n• 服务电话：0769-82238202` +
+      `\n\n湘阁里辣${storeName}全体伙伴恭候您的到来！`;
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
     content = `尊敬的${booking.name}，您好！您已取消湘阁里辣（${storeName}）预订：\\n` +
