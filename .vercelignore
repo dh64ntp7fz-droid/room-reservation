@@ -1,6 +1,0 @@
-node_modules/
-data.json
-server.js
-fly.toml
-index.html
-.env.example
