@@ -42,10 +42,43 @@ function newToken() {
 function loadData() {
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(raw);
+    const data = JSON.parse(raw);
+    // 旧格式迁移：检查是否有 stores 字段
+    if (!data.stores) return migrateData(data);
+    return data;
   } catch {
     return initData();
   }
+}
+
+function migrateData(oldData) {
+  // 旧格式 {"bookings": [...]} → 新格式多门店结构
+  const defaultTables = [
+    {name:'爱晚亭',category:'包间'},{name:'东江湖',category:'包间'},{name:'岳麓山',category:'包间'},
+    {name:'橘子洲',category:'包间'},{name:'桃花源',category:'包间'},{name:'洞庭湖',category:'包间'},
+    {name:'B16',category:'大厅'},{name:'B15',category:'大厅'},{name:'B13',category:'大厅'},
+    {name:'A10',category:'大厅'},{name:'A11',category:'大厅'},{name:'A12',category:'大厅'}
+  ];
+  const oldBookings = oldData.bookings || [];
+  const newData = {
+    stores: {
+      dalang: {
+        id:'dalang', name:'大朗环球店', tables:defaultTables, bookings:[],
+        history: oldBookings.map(b=>({...b, status:'migrated', archivedAt:new Date().toISOString()}))
+      }
+    },
+    users: {
+      xgll2122: {
+        username:'xgll2122', passwordHash:hashPassword('2122'), store:'dalang',
+        role:'admin', createdAt:new Date().toISOString()
+      }
+    },
+    tokens:{},
+    meta:{lastReset:getDateString()}
+  };
+  saveData(newData);
+  console.log('🔄 旧数据迁移: ' + oldBookings.length + ' 条预订 → 历史');
+  return newData;
 }
 
 function initData() {
@@ -74,9 +107,9 @@ function initData() {
       }
     },
     users: {
-      'admin': {
-        username: 'admin',
-        passwordHash: hashPassword('123456'),
+      'xgll2122': {
+        username: 'xgll2122',
+        passwordHash: hashPassword('2122'),
         store: 'dalang',
         role: 'admin',
         createdAt: new Date().toISOString()
@@ -465,7 +498,7 @@ app.put('/api/admin/users/:username', (req, res) => {
 app.delete('/api/admin/users/:username', (req, res) => {
   const data = loadData();
   if (!requireAdmin(req, res, data)) return;
-  if (req.params.username === 'admin') {
+  if (req.params.username === 'xgll2122') {
     return res.status(400).json({ error: '不能删除系统管理员' });
   }
   
@@ -600,5 +633,5 @@ async function sendSmsNotification(type, booking) {
 // ── 启动 ──
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🏠 包间预订系统已启动: http://localhost:${PORT}`);
-  console.log(`📋 默认账号: admin / 123456`);
+  console.log(`📋 默认账号: xgll2122 / 2122`);
 });
