@@ -574,7 +574,8 @@ async function sendWecomNotification(type, booking, storeName) {
 感谢您的理解，欢迎下次光临！`;
   } else return;
   
-  const body = JSON.stringify({ msgtype: 'markdown', markdown: { content: `## ${title}\\n${content}` } });
+  const body = JSON.stringify({ msgtype: 'markdown', markdown: { content: `## ${title}\
+${content}` } });
   
   return new Promise((resolve) => {
     try {
