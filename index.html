@@ -453,7 +453,8 @@ let state = {
 
 // ── 初始化 ──
 document.addEventListener('DOMContentLoaded', () => {
-  state.date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+  const _nd = new Date();
+  state.date = `${_nd.getFullYear()}-${String(_nd.getMonth()+1).padStart(2,'0')}-${String(_nd.getDate()).padStart(2,'0')}`;
   const dp = document.getElementById('datePicker');
   dp.value = state.date;
   dp.addEventListener('change', () => { state.date = dp.value; loadAll(); });
@@ -1017,7 +1018,7 @@ function updateClock() {
   const el = document.getElementById('liveClock');
   if (el) el.textContent = t;
   // 自动更新今天日期
-  const today = now.toLocaleDateString('zh-CN').replace(/\//g, '-');
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const dp = document.getElementById('datePicker');
   if (dp && dp.value !== today) {
     dp.value = today;
