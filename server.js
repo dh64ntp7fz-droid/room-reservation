@@ -582,7 +582,9 @@ async function sendWecomNotification(type, booking, storeName) {
       `\n• 预定人数：${booking.people}人` +
       `\n• 预留手机：${phoneDisplay}` +
       `\n• 特别备注：${booking.note || '无'}` +
-      `\n• 到店指引：可点击导航 https://surl.amap.com/flASiCC19gwW，餐厅有地面停车场，消费免停2小时，服务电话 0769-82238202` +
+      `\n• 到店指引：餐厅有地面停车场，消费免停2小时` +
+      `\n• 导航：https://surl.amap.com/flASiCC19gwW` +
+      `\n• 服务电话：0769-82238202` +
       `\n\n湘阁里辣${storeName}全体伙伴恭候您的到来！`;
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
