@@ -39,16 +39,62 @@ function newToken() {
 }
 
 // ── 数据加载/保存 ──
+const DATA_BACKUP = DATA_FILE + '.bak';
+
 function loadData() {
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf-8');
     const data = JSON.parse(raw);
-    // 旧格式迁移：检查是否有 stores 字段
     if (!data.stores) return migrateData(data);
+    try { fs.writeFileSync(DATA_BACKUP, raw, 'utf-8'); } catch {}
     return data;
-  } catch {
-    return initData();
+  } catch (e) {
+    console.error('❌ 数据文件读取失败:', e.message);
+    try {
+      const raw = fs.readFileSync(DATA_BACKUP, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data.stores) {
+        console.log('🔄 从备份恢复数据成功');
+        fs.writeFileSync(DATA_FILE, raw, 'utf-8');
+        return data;
+      }
+    } catch {}
+    console.log('⚠️ 无备份可用，创建默认数据（不覆盖文件）');
+    return createDefaultData();
   }
+}
+
+function createDefaultData() {
+  const defaultTables = [
+    { name: '爱晚亭', category: '包间' },
+    { name: '东江湖', category: '包间' },
+    { name: '岳麓山', category: '包间' },
+    { name: '橘子洲', category: '包间' },
+    { name: '桃花源', category: '包间' },
+    { name: '洞庭湖', category: '包间' },
+    { name: 'B16', category: '大厅' },
+    { name: 'B15', category: '大厅' },
+    { name: 'B13', category: '大厅' },
+    { name: 'A10', category: '大厅' },
+    { name: 'A11', category: '大厅' },
+    { name: 'A12', category: '大厅' }
+  ];
+  return {
+    stores: {
+      'dalang': {
+        id: 'dalang', name: '大朗环球店', tables: defaultTables,
+        bookings: [], history: []
+      }
+    },
+    users: {
+      'xgll2122': {
+        username: 'xgll2122', passwordHash: hashPassword('2122'),
+        store: 'dalang', role: 'admin', createdAt: new Date().toISOString()
+      }
+    },
+    tokens: {},
+    meta: { lastReset: getDateString() }
+  };
 }
 
 function migrateData(oldData) {
@@ -82,53 +128,22 @@ function migrateData(oldData) {
 }
 
 function initData() {
-  const defaultTables = [
-    { name: '爱晚亭', category: '包间' },
-    { name: '东江湖', category: '包间' },
-    { name: '岳麓山', category: '包间' },
-    { name: '橘子洲', category: '包间' },
-    { name: '桃花源', category: '包间' },
-    { name: '洞庭湖', category: '包间' },
-    { name: 'B16', category: '大厅' },
-    { name: 'B15', category: '大厅' },
-    { name: 'B13', category: '大厅' },
-    { name: 'A10', category: '大厅' },
-    { name: 'A11', category: '大厅' },
-    { name: 'A12', category: '大厅' }
-  ];
-  const data = {
-    stores: {
-      'dalang': {
-        id: 'dalang',
-        name: '大朗环球店',
-        tables: defaultTables,
-        bookings: [],
-        history: []
-      }
-    },
-    users: {
-      'xgll2122': {
-        username: 'xgll2122',
-        passwordHash: hashPassword('2122'),
-        store: 'dalang',
-        role: 'admin',
-        createdAt: new Date().toISOString()
-      }
-    },
-    tokens: {},
-    meta: { lastReset: getDateString() }
-  };
+  const data = createDefaultData();
   saveData(data);
   return data;
 }
 
 function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  const tmp = DATA_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8');
+  fs.renameSync(tmp, DATA_FILE);
+  // 后台异步备份
+  try { fs.writeFileSync(DATA_BACKUP, JSON.stringify(data, null, 2), 'utf-8'); } catch {}
 }
 
 function getDateString() {
-  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  return d.toISOString().slice(0, 10);
+  // en-CA locale 直接输出 YYYY-MM-DD 格式，正确处理 Shanghai 时区
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
 }
 
 // ── 自动清空 ──
