@@ -366,8 +366,24 @@ body {
 
   <div class="admin-section" id="sec-store">
     <div class="add-table-form">
-      <input type="text" id="storeNameInput" placeholder="门店名称" style="width:240px">
-      <button class="add-btn" onclick="updateStoreName()">💾 保存</button>
+      <select id="adminStoreSelect" onchange="onAdminStoreSwitch()" style="padding:8px 12px;border:2px solid #e8e8e8;border-radius:8px;font-size:14px;font-family:inherit;min-width:180px"></select>
+      <input type="text" id="storeNameInput" placeholder="门店名称" style="width:180px">
+      <button class="add-btn" onclick="updateStoreName()">💾 改名称</button>
+      <button class="add-btn" onclick="deleteStore()" style="background:#e74c3c">🗑 删门店</button>
+    </div>
+    <div style="margin-top:16px">
+      <h4 style="margin:0 0 8px 0">桌台管理（当前门店）</h4>
+      <div class="add-table-form">
+        <input type="text" id="newTableName2" placeholder="桌台名称" style="width:160px">
+        <select id="newTableCat2"><option value="包间">包间</option><option value="大厅">大厅</option><option value="卡座">卡座</option></select>
+        <button class="add-btn" onclick="addTableForStore()">➕ 新增</button>
+      </div>
+      <div style="margin-top:12px">
+        <p class="batch-help">每行一个，格式：桌台名,分类</p>
+        <textarea class="batch-textarea" id="batchInput2" placeholder="B17,大厅&#10;B18,大厅" style="height:80px"></textarea>
+        <button class="add-btn" onclick="batchImportForStore()" style="margin-top:8px">📥 批量导入</button>
+      </div>
+      <div class="table-manage-list" id="tableManageList2" style="margin-top:16px"></div>
     </div>
   </div>
 
@@ -813,7 +829,7 @@ function showAdminSection(section) {
   document.getElementById('sec-' + section).classList.add('active');
   if (section === 'tables') renderTableManage();
   if (section === 'accounts') loadUsers();
-  if (section === 'store') { document.getElementById('storeNameInput').value = state.storeName || ''; }
+  if (section === 'store') { loadAdminStoreList(); }
 }
 
 function renderTableManage() {
@@ -949,19 +965,121 @@ async function deleteUser(username) {
 }
 
 async function updateStoreName() {
+  const storeId = document.getElementById('adminStoreSelect').value;
   const name = document.getElementById('storeNameInput').value.trim();
   if (!name) { toast('请输入门店名称', 'error'); return; }
   try {
-    const r = await fetch(`/api/store/${state.store}/settings`, {
+    const r = await fetch(`/api/store/${storeId}/settings`, {
       method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
       body:JSON.stringify({name})
     });
-    const d = await r.json();
-    if (!r.ok) { toast(d.error, 'error'); return; }
-    state.storeName = d.name;
-    document.getElementById('storeNameDisplay').textContent = d.name;
+    if (!r.ok) { const d=await r.json(); toast(d.error,'error'); return; }
+    state.storeName = name;
+    document.getElementById('storeNameDisplay').textContent = name;
+    await loadAdminStoreList();
     toast('✅ 门店名称已更新');
   } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function onAdminStoreSwitch() {
+  const storeId = document.getElementById('adminStoreSelect').value;
+  const storeName = document.getElementById('adminStoreSelect').selectedOptions[0].textContent;
+  document.getElementById('storeNameInput').value = storeName.split('·')[0].trim();
+  await loadTablesForStore(storeId);
+}
+
+async function loadTablesForStore(storeId) {
+  try {
+    const r = await fetch(`/api/store/${storeId}`, {headers:{'Authorization':'Bearer '+state.token}});
+    const d = await r.json();
+    const list = document.getElementById('tableManageList2');
+    if (!d.tables || !d.tables.length) {
+      list.innerHTML = '<div style="font-size:13px;color:var(--text-light);padding:8px 0">暂无桌台，请添加</div>';
+      return;
+    }
+    list.innerHTML = d.tables.map(t => `
+      <div class="table-manage-item">
+        <div><strong>${t.name}</strong><span class="cat"> · ${t.category||'大厅'}</span></div>
+        <button class="delete-table-btn" onclick="deleteTableForStore('${document.getElementById('adminStoreSelect').value}','${t.name}')">删除</button>
+      </div>`).join('');
+  } catch(e) { toast('加载桌台失败', 'error'); }
+}
+
+async function addTableForStore() {
+  const storeId = document.getElementById('adminStoreSelect').value;
+  const name = document.getElementById('newTableName2').value.trim();
+  const cat = document.getElementById('newTableCat2').value;
+  if (!name) { toast('请输入桌台名称', 'error'); return; }
+  try {
+    const r = await fetch(`/api/store/${storeId}/tables`, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
+      body:JSON.stringify({name, category:cat})
+    });
+    if (!r.ok) { const d=await r.json(); toast(d.error,'error'); return; }
+    document.getElementById('newTableName2').value = '';
+    await loadTablesForStore(storeId);
+    toast('✅ 桌台已添加');
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function batchImportForStore() {
+  const storeId = document.getElementById('adminStoreSelect').value;
+  const text = document.getElementById('batchInput2').value.trim();
+  if (!text) { toast('请粘贴桌台列表', 'error'); return; }
+  const tables = text.split('\n').filter(l=>l.trim()).map(line => {
+    const parts = line.split(',').map(s=>s.trim());
+    return { name: parts[0], category: parts[1]||'大厅' };
+  });
+  try {
+    const r = await fetch(`/api/store/${storeId}/tables/batch`, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
+      body:JSON.stringify({tables})
+    });
+    if (!r.ok) { const d=await r.json(); toast(d.error,'error'); return; }
+    document.getElementById('batchInput2').value = '';
+    await loadTablesForStore(storeId);
+    toast(`✅ 已导入 ${tables.length} 个桌台`);
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function deleteTableForStore(storeId, name) {
+  if (!confirm(`确定删除「${name}」吗？`)) return;
+  try {
+    const r = await fetch(`/api/store/${storeId}/tables/${encodeURIComponent(name)}`, {
+      method:'DELETE', headers:{'Authorization':'Bearer '+state.token}
+    });
+    if (!r.ok) { const d=await r.json(); toast(d.error,'error'); return; }
+    await loadTablesForStore(storeId);
+    toast('🗑️ 桌台已删除');
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function deleteStore() {
+  const storeId = document.getElementById('adminStoreSelect').value;
+  const storeName = document.getElementById('adminStoreSelect').selectedOptions[0].textContent;
+  if (!confirm(`确定删除门店「${storeName}」？所有预订数据将被清空！`)) return;
+  if (storeId === 'dalang') { toast('主门店 dalang 不能删除', 'error'); return; }
+  try {
+    const r = await fetch(`/api/admin/stores/${storeId}`, {
+      method:'DELETE', headers:{'Authorization':'Bearer '+state.token}
+    });
+    if (!r.ok) { const d=await r.json(); toast(d.error,'error'); return; }
+    await loadAdminStoreList();
+    toast('🗑️ 门店已删除');
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function loadAdminStoreList() {
+  try {
+    const r = await fetch('/api/stores');
+    const stores = await r.json();
+    const sel = document.getElementById('adminStoreSelect');
+    const cur = document.getElementById('adminStoreSelect').value || state.store;
+    sel.innerHTML = stores.map(s => `<option value="${s.id}">${s.name} · ${s.id}</option>`).join('');
+    if (stores.find(s=>s.id===cur)) sel.value = cur;
+    else sel.value = stores[0]?.id || 'dalang';
+    await onAdminStoreSwitch();
+  } catch(e) { toast('加载门店列表失败', 'error'); }
 }
 
 function exportHistory() {

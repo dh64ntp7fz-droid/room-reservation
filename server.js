@@ -497,6 +497,17 @@ app.put('/api/store/:storeId/settings', (req, res) => {
   res.json({ name: store.name });
 });
 
+// 超管删除门店
+app.delete('/api/admin/stores/:storeId', (req, res) => {
+  const data = loadData();
+  if (!requireAdmin(req, res, data)) return;
+  if (req.params.storeId === 'dalang') return res.status(400).json({ error: '主门店不可删除' });
+  if (!data.stores[req.params.storeId]) return res.status(404).json({ error: '门店不存在' });
+  delete data.stores[req.params.storeId];
+  saveData(data);
+  res.json({ ok: true });
+});
+
 // 用户管理
 app.get('/api/admin/users', (req, res) => {
   const data = loadData();
@@ -517,6 +528,15 @@ app.post('/api/admin/users', (req, res) => {
     return res.status(400).json({ error: '请填写用户名/密码/门店' });
   }
   if (data.users[username]) return res.status(400).json({ error: '用户名已存在' });
+  
+  // 如果门店不存在，自动创建并复制默认桌台模板
+  if (!data.stores[store]) {
+    data.stores[store] = {
+      id: store, name: store, tables: JSON.parse(JSON.stringify(createDefaultData().stores.dalang.tables)),
+      bookings: [], history: []
+    };
+    console.log('🏪 自动创建门店:', store);
+  }
   
   data.users[username] = {
     username, passwordHash: hashPassword(password), store,
