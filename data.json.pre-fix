@@ -1,0 +1,79 @@
+{
+  "stores": {
+    "dalang": {
+      "id": "dalang",
+      "name": "大朗环球店",
+      "tables": [
+        {
+          "name": "爱晚亭",
+          "category": "包间"
+        },
+        {
+          "name": "东江湖",
+          "category": "包间"
+        },
+        {
+          "name": "岳麓山",
+          "category": "包间"
+        },
+        {
+          "name": "橘子洲",
+          "category": "包间"
+        },
+        {
+          "name": "桃花源",
+          "category": "包间"
+        },
+        {
+          "name": "洞庭湖",
+          "category": "包间"
+        },
+        {
+          "name": "B16",
+          "category": "大厅"
+        },
+        {
+          "name": "B15",
+          "category": "大厅"
+        },
+        {
+          "name": "B13",
+          "category": "大厅"
+        },
+        {
+          "name": "A10",
+          "category": "大厅"
+        },
+        {
+          "name": "A11",
+          "category": "大厅"
+        },
+        {
+          "name": "A12",
+          "category": "大厅"
+        }
+      ],
+      "bookings": [],
+      "history": []
+    }
+  },
+  "users": {
+    "xgll2122": {
+      "username": "xgll2122",
+      "passwordHash": "b785effe75103babea9cf20e448781e4a0c93056f63b915bbe56d31656f523ed",
+      "store": "dalang",
+      "role": "admin",
+      "createdAt": "2026-05-16T03:09:32.604Z"
+    }
+  },
+  "tokens": {
+    "acdf8337b001ef7e175d1dfdeeefe200a815c54e09d62dc1fbc5931b55f21b30": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    }
+  },
+  "meta": {
+    "lastReset": "2026-05-17"
+  }
+}

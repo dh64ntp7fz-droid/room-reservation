@@ -1,0 +1,160 @@
+{
+  "stores": {
+    "dalang": {
+      "id": "dalang",
+      "name": "大朗环球店",
+      "tables": [
+        {
+          "name": "爱晚亭",
+          "category": "包间"
+        },
+        {
+          "name": "东江湖",
+          "category": "包间"
+        },
+        {
+          "name": "岳麓山",
+          "category": "包间"
+        },
+        {
+          "name": "橘子洲",
+          "category": "包间"
+        },
+        {
+          "name": "桃花源",
+          "category": "包间"
+        },
+        {
+          "name": "洞庭湖",
+          "category": "包间"
+        },
+        {
+          "name": "B16",
+          "category": "大厅"
+        },
+        {
+          "name": "B15",
+          "category": "大厅"
+        },
+        {
+          "name": "B13",
+          "category": "大厅"
+        },
+        {
+          "name": "A10",
+          "category": "大厅"
+        },
+        {
+          "name": "A11",
+          "category": "大厅"
+        },
+        {
+          "name": "A12",
+          "category": "大厅"
+        }
+      ],
+      "bookings": [
+        {
+          "id": "mpa0cdoe59vrp",
+          "tables": [
+            "岳麓山"
+          ],
+          "name": "Q",
+          "phone": "1",
+          "people": 1,
+          "time": "18:00",
+          "date": "2026-05-18",
+          "note": "Q",
+          "createdBy": "xgll2122",
+          "createdAt": "2026-05-17T16:46:47.870Z",
+          "updatedAt": "2026-05-17T16:46:47.870Z"
+        }
+      ],
+      "history": [
+        {
+          "id": "mp9z43w2aw3qv",
+          "tables": [
+            "爱晚亭"
+          ],
+          "name": "邹慧明测试",
+          "phone": "12344",
+          "people": 1,
+          "time": "18:00",
+          "date": "2026-05-18",
+          "note": "测试测试",
+          "createdBy": "xgll2122",
+          "createdAt": "2026-05-17T16:12:22.322Z",
+          "updatedAt": "2026-05-17T16:12:22.322Z",
+          "status": "auto_reset",
+          "archivedAt": "2026-05-17T16:32:28.404Z"
+        },
+        {
+          "id": "mp9zwdoduvepr",
+          "tables": [
+            "爱晚亭"
+          ],
+          "name": "1",
+          "phone": "1",
+          "people": 1,
+          "time": "18:00",
+          "date": "2026-05-18",
+          "note": "1",
+          "createdBy": "xgll2122",
+          "createdAt": "2026-05-17T16:34:21.373Z",
+          "updatedAt": "2026-05-17T16:34:21.373Z",
+          "status": "cancelled",
+          "cancelledAt": "2026-05-17T16:46:22.444Z"
+        }
+      ]
+    }
+  },
+  "users": {
+    "xgll2122": {
+      "username": "xgll2122",
+      "passwordHash": "b785effe75103babea9cf20e448781e4a0c93056f63b915bbe56d31656f523ed",
+      "store": "dalang",
+      "role": "admin",
+      "createdAt": "2026-05-16T03:09:32.604Z"
+    }
+  },
+  "tokens": {
+    "dc0cb3d73badef9df3432a02312bed74f8c1dc586fe3d2c41a51fde69c387164": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    },
+    "9dc5357e59b87b153275ed05b3aafc43aeb949b1441e20d6f4894e15024b96bf": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    },
+    "aee7cfa768db7c90418159f15d5e4929cd1f954fc7319eab5f286bd157fa3a24": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    },
+    "f928318f1783391d82bbde0efee15274a9dce17c33d318c229a436f98b022962": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    },
+    "fe1d0ceddb24ca518cbfb41329bbcd017eea38da2e529ae8da04e9699d071a11": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    },
+    "c16a315eeb943a3198eb9e1514c59ee8a0fc3ac72e41729f15b25a20bddcba71": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    },
+    "54b2c251fa24f0443832e84be2ef47170dd8d76540a9f41c39a92845c2222ba1": {
+      "username": "xgll2122",
+      "store": "dalang",
+      "role": "admin"
+    }
+  },
+  "meta": {
+    "lastReset": "2026-05-18"
+  }
+}

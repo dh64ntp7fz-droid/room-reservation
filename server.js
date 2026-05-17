@@ -131,6 +131,7 @@ function migrateData(oldData) {
 
 function initData() {
   const data = createDefaultData();
+  delete data._isDefault;  // 允许首次写入磁盘
   saveData(data);
   return data;
 }
