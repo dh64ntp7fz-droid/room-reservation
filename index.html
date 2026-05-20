@@ -531,14 +531,18 @@ async function initApp() {
   // 检查 token 是否有效
   try {
     const r = await fetch('/api/me', {headers:{'Authorization':'Bearer '+state.token}});
-    if (!r.ok) throw new Error('invalid');
+    if (!r.ok) {
+      const errText = await r.text();
+      console.error('auth check failed:', r.status, errText);
+      throw new Error('invalid');
+    }
     const d = await r.json();
     state.store = d.store; state.storeName = d.storeName;
     state.isAdmin = d.role === 'admin';
     state.tables = d.tables || [];
     document.getElementById('storeNameDisplay').textContent = state.storeName;
     document.getElementById('adminBtn').style.display = state.isAdmin ? 'inline-block' : 'none';
-  } catch { doLogout(); return; }
+  } catch(e) { console.error('initApp error:', e); doLogout(); return; }
   
   loadAll();
   connectSSE();

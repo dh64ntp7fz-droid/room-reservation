@@ -53,23 +53,7 @@
           "category": "大厅"
         }
       ],
-      "bookings": [
-        {
-          "id": "mpa0cdoe59vrp",
-          "tables": [
-            "岳麓山"
-          ],
-          "name": "Q",
-          "phone": "1",
-          "people": 1,
-          "time": "18:00",
-          "date": "2026-05-18",
-          "note": "Q",
-          "createdBy": "xgll2122",
-          "createdAt": "2026-05-17T16:46:47.870Z",
-          "updatedAt": "2026-05-17T16:46:47.870Z"
-        }
-      ],
+      "bookings": [],
       "history": [
         {
           "id": "mp9z43w2aw3qv",
@@ -104,6 +88,23 @@
           "updatedAt": "2026-05-17T16:34:21.373Z",
           "status": "cancelled",
           "cancelledAt": "2026-05-17T16:46:22.444Z"
+        },
+        {
+          "id": "mpa0cdoe59vrp",
+          "tables": [
+            "岳麓山"
+          ],
+          "name": "Q",
+          "phone": "1",
+          "people": 1,
+          "time": "18:00",
+          "date": "2026-05-18",
+          "note": "Q",
+          "createdBy": "xgll2122",
+          "createdAt": "2026-05-17T16:46:47.870Z",
+          "updatedAt": "2026-05-17T16:46:47.870Z",
+          "status": "auto_reset",
+          "archivedAt": "2026-05-18T16:00:09.390Z"
         }
       ]
     }
@@ -155,6 +156,6 @@
     }
   },
   "meta": {
-    "lastReset": "2026-05-18"
+    "lastReset": "2026-05-19"
   }
 }

@@ -602,10 +602,10 @@ app.get('/api/events', (req, res) => {
     'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
     'Connection': 'keep-alive', 'X-Accel-Buffering': 'no'
   });
-  res.write(`event: connected\\ndata: {"status":"ok"}\\n\\n`);
+  res.write('event: connected\ndata: {"status":"ok"}\n\n');
   const client = { id: Date.now(), res };
   clients.push(client);
-  const hb = setInterval(() => { try { res.write(':\\n\\n'); } catch {} }, 30000);
+  const hb = setInterval(() => { try { res.write(': \n\n'); } catch {} }, 30000);
   req.on('close', () => { clearInterval(hb); clients = clients.filter(c => c.id !== client.id); });
 });
 
