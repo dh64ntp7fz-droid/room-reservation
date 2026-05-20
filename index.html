@@ -542,7 +542,7 @@ async function initApp() {
     state.tables = d.tables || [];
     document.getElementById('storeNameDisplay').textContent = state.storeName;
     document.getElementById('adminBtn').style.display = state.isAdmin ? 'inline-block' : 'none';
-  } catch(e) { console.error('initApp error:', e); doLogout(); return; }
+  } catch(e) { console.error('initApp error:', e); toast('登录验证失败: ' + e.message, 'error'); doLogout(); return; }
   
   loadAll();
   connectSSE();
