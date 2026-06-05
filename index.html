@@ -1087,7 +1087,22 @@ async function loadAdminStoreList() {
 }
 
 function exportHistory() {
-  window.open(`/api/store/${state.store}/history/export`, '_blank');
+  fetch(`/api/store/${state.store}/history/export`, {
+    headers:{'Authorization':'Bearer '+state.token}
+  }).then(r => {
+    if (!r.ok) { toast('导出失败 ('+r.status+')', 'error'); return; }
+    r.blob().then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${state.storeName}_历史记录_${state.date||new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('导出成功', 'success');
+    });
+  }).catch(e => toast('导出失败: '+e.message, 'error'));
 }
 
 async function loadAdminData() {
