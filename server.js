@@ -26,6 +26,16 @@ const SMS_TEMPLATE_ID = process.env.SMS_TEMPLATE_ID || '';
 let clients = [];
 let lastResetDate = null;
 
+// ── 内存缓存（避免每个请求都查Supabase） ──
+let dataCache = null;
+let dataCacheTime = 0;
+const CACHE_TTL = 8000; // 8秒缓存，够应付连续请求又不至于太旧
+
+function invalidateCache() {
+  dataCache = null;
+  dataCacheTime = 0;
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -44,6 +54,10 @@ function getDateString() {
 
 // ── Supabase 数据操作 ──
 async function loadData() {
+  // 缓存命中: 8秒内直接用缓存
+  if (dataCache && Date.now() - dataCacheTime < CACHE_TTL) {
+    return dataCache;
+  }
   try {
     const [storesRes, bookingsRes, historyRes, usersRes, tokensRes, metaRes] = await Promise.all([
       supabase.from('stores').select('*'),
@@ -92,7 +106,9 @@ async function loadData() {
       metaObj[m.key] = m.value;
     }
 
-    return { stores, users, tokens, meta: metaObj };
+    dataCache = { stores, users, tokens, meta: metaObj };
+    dataCacheTime = Date.now();
+    return dataCache;
   } catch (e) {
     console.error('❌ Supabase 数据加载失败:', e.message);
     return createDefaultData();
@@ -183,7 +199,14 @@ app.post('/api/login', async (req, res) => {
   }
   const token = newToken();
   data.tokens[token] = { username, store: user.store, role: user.role };
-  await supabase.from('tokens').insert({ token, username, store: user.store, role: user.role });
+  await supabase.from('tokens').insert({ token, username, store: user.store, role: user.role }); invalidateCache();
+  // 清理该用户旧的 token（超过50个就删除最旧的）
+  supabase.from('tokens').select('token').eq('username', username).order('created_at', { ascending: false }).limit(100).then(({ data: oldTokens }) => {
+    if (oldTokens && oldTokens.length > 50) {
+      const toDelete = oldTokens.slice(50).map(t => t.token);
+      supabase.from('tokens').delete().in('token', toDelete).then(() => console.log(`🧹 清理 ${toDelete.length} 个过期 token`)).catch(()=>{});
+    }
+  }).catch(()=>{});
   const store = data.stores[user.store];
   res.json({ token, username: user.username, store: user.store, storeName: store?.name || '', role: user.role });
 });
@@ -212,7 +235,7 @@ app.get('/api/store/:storeId', async (req, res) => {
 
 app.get('/api/store/:storeId/bookings', async (req, res) => {
   const data = await loadData();
-  await checkAutoReset();
+  checkAutoReset().catch(e => console.error('自动清空检查失败:', e.message));
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
   let bookings = store.bookings || [];
@@ -262,7 +285,7 @@ app.post('/api/store/:storeId/bookings', async (req, res) => {
     name: booking.name, phone: booking.phone, people: booking.people,
     time: booking.time, date: booking.date, note: booking.note,
     created_by: booking.createdBy, created_at: booking.createdAt, updated_at: booking.updatedAt
-  });
+  }); invalidateCache();
 
   notifyAll('updated', { action: 'created', booking, store: req.params.storeId });
   sendWecomNotification('created', booking, store.name);
@@ -306,7 +329,7 @@ app.put('/api/store/:storeId/bookings/:id', async (req, res) => {
   await supabase.from('bookings').update({
     tables, name, phone: phone || '', people: parseInt(people),
     time, date, note: note || '', updated_at: updatedAt
-  }).eq('id', req.params.id);
+  }).eq('id', req.params.id); invalidateCache();
 
   const updatedBooking = { ...store.bookings[idx], tables, name, phone: phone || '', people: parseInt(people), time, date, note: note || '', updatedAt };
   notifyAll('updated', { action: 'updated', booking: updatedBooking, store: req.params.storeId });
@@ -336,7 +359,7 @@ app.delete('/api/store/:storeId/bookings/:id', async (req, res) => {
     status: 'cancelled', archived_at: archivedAt
   });
   // 从预订表删除
-  await supabase.from('bookings').delete().eq('id', req.params.id);
+  await supabase.from('bookings').delete().eq('id', req.params.id); invalidateCache();
 
   notifyAll('updated', { action: 'deleted', id: removed.id, tables: removed.tables, store: req.params.storeId });
   sendWecomNotification('deleted', removed, store.name);
@@ -353,6 +376,7 @@ app.get('/api/store/:storeId/history', async (req, res) => {
 
 app.get('/api/store/:storeId/history/export', async (req, res) => {
   const data = await loadData();
+  if (!requireAuth(req, res, data)) return;
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
 
@@ -388,7 +412,7 @@ app.post('/api/store/:storeId/tables', async (req, res) => {
 
   store.tables = store.tables || [];
   store.tables.push({ name, category: category || '大厅' });
-  await supabase.from('stores').update({ tables_config: store.tables }).eq('id', req.params.storeId);
+  await supabase.from('stores').update({ tables_config: store.tables }).eq('id', req.params.storeId); invalidateCache();
   notifyAll('config_update', { store: req.params.storeId, tables: store.tables });
   res.json(store.tables);
 });
@@ -406,7 +430,7 @@ app.delete('/api/store/:storeId/tables/:name', async (req, res) => {
   }
 
   store.tables = (store.tables || []).filter(t => t.name !== name);
-  await supabase.from('stores').update({ tables_config: store.tables }).eq('id', req.params.storeId);
+  await supabase.from('stores').update({ tables_config: store.tables }).eq('id', req.params.storeId); invalidateCache();
   notifyAll('config_update', { store: req.params.storeId, tables: store.tables });
   res.json(store.tables);
 });
@@ -429,7 +453,7 @@ app.post('/api/store/:storeId/tables/batch', async (req, res) => {
       added++;
     }
   }
-  await supabase.from('stores').update({ tables_config: store.tables }).eq('id', req.params.storeId);
+  await supabase.from('stores').update({ tables_config: store.tables }).eq('id', req.params.storeId); invalidateCache();
   notifyAll('config_update', { store: req.params.storeId, tables: store.tables });
   res.json({ added, tables: store.tables });
 });
@@ -636,5 +660,5 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🏠 包间预订系统已启动: http://localhost:${PORT}`);
   console.log(`📋 默认账号: xgll2122 / 2122`);
   console.log(`🗄️ 数据存储: Supabase (${SUPABASE_URL})`);
-  await checkAutoReset();
+  checkAutoReset().catch(e => console.error('自动清空检查失败:', e.message));
 });
