@@ -1,12 +1,14 @@
 {
   "name": "room-reservation",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "湘阁里辣包间预订系统 (Supabase版)",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.21.0",
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "@supabase/supabase-js": "^2.49.1"
+    "@supabase/supabase-js": "^2.49.0"
   }
 }
