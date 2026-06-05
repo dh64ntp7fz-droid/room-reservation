@@ -29,7 +29,7 @@ let lastResetDate = null;
 // ── 内存缓存（避免每个请求都查Supabase） ──
 let dataCache = null;
 let dataCacheTime = 0;
-const CACHE_TTL = 8000; // 8秒缓存，够应付连续请求又不至于太旧
+const CACHE_TTL = 60000; // 60秒缓存，足以应对冷启动，写操作后自动失效
 
 function invalidateCache() {
   dataCache = null;
@@ -177,7 +177,10 @@ function notifyAll(event, data) {
 // ── 验证中间件 ──
 function requireAuth(req, res, data) {
   const token = req.headers['authorization']?.replace('Bearer ', '');
-  if (!token || !data.tokens[token]) return null;
+  if (!token || !data.tokens[token]) {
+    res.status(401).json({ error: '请先登录' });
+    return null;
+  }
   return data.tokens[token];
 }
 
@@ -199,7 +202,11 @@ app.post('/api/login', async (req, res) => {
   }
   const token = newToken();
   data.tokens[token] = { username, store: user.store, role: user.role };
-  await supabase.from('tokens').insert({ token, username, store: user.store, role: user.role }); invalidateCache();
+  await supabase.from('tokens').insert({ token, username, store: user.store, role: user.role });
+  // 更新内存缓存（不清全缓存，token 刚创建需要立即可用）
+  if (dataCache) {
+    dataCache.tokens[token] = { username, store: user.store, role: user.role };
+  }
   // 清理该用户旧的 token（超过50个就删除最旧的）
   supabase.from('tokens').select('token').eq('username', username).order('created_at', { ascending: false }).limit(100).then(({ data: oldTokens }) => {
     if (oldTokens && oldTokens.length > 50) {
@@ -376,7 +383,8 @@ app.get('/api/store/:storeId/history', async (req, res) => {
 
 app.get('/api/store/:storeId/history/export', async (req, res) => {
   const data = await loadData();
-  if (!requireAuth(req, res, data)) return;
+  const user = requireAuth(req, res, data);
+  if (!user) return;
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
 
