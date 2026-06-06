@@ -640,7 +640,7 @@ async function sendWecomNotification(type, booking, storeName, storeWebhook, sto
     const navLine = storeNavUrl ? '\n• [点击导航](' + storeNavUrl + ')' : '';
     const parking = storeParking || 2;
     const phoneLine = storePhone ? '\n• 服务电话:' + storePhone : '';
-    content = `尊敬的${booking.name},您好!您已成功预订湘阁里辣(${storeName}):\n• 包间号/台号:${tablesDisplay}\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:${phoneDisplay}\n• 特别备注:${booking.note || '无'}\n• 免费停车:餐厅有地面停车场,消费免停${parking}小时${navLine}${phoneLine}\n\n湘阁里辣${storeName}全体伙伴恭候您的到来!`;
+    content = `尊敬的**${booking.name}**,您好!您已成功预订湘阁里辣(${storeName}):\n• 包间号/台号:**${tablesDisplay}**\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:**${phoneDisplay}**\n• 特别备注:${booking.note || '无'}\n• 免费停车:餐厅有地面停车场,消费免停${parking}小时${navLine}${phoneLine}\n\n湘阁里辣${storeName}全体伙伴恭候您的到来!`;
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
     content = `尊敬的${booking.name},您好!\n您已取消湘阁里辣(${storeName})的预订:\n• 包间号/台号:${tablesDisplay}\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:${booking.phone || '无'}\n• 特别备注:${booking.note || '无'}\n\n感谢您的理解,欢迎下次光临!`;
