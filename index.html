@@ -665,7 +665,6 @@ function renderGrid() {
     }
     
     const multiClass = isMulti ? ' multi-warn' : '';
-    const statusText = isMulti ? `⚠ 今日${allToday.length}单` : '已预订';
     const statusColor = isMulti ? 'warn' : 'booked';
     
     const slotHtml = activeBookings.map((b, i) => {
@@ -690,7 +689,7 @@ function renderGrid() {
     return `<div class="room-card ${catClass}${multiClass}">
       <div class="room-name">${t.name}</div>
       <div class="room-category">${catLabel}</div>
-      <div class="room-status ${statusColor}"><span class="status-dot"></span>${statusText}</div>
+      <div class="room-status ${statusColor}"><span class="status-dot"></span>已预订</div>
       <div class="booking-slots-wrap">${slotHtml}</div>
       <button class="room-action free-action" onclick="openBooking('${t.name}')" style="margin-top:8px">📝 + 新增</button>
     </div>`;
