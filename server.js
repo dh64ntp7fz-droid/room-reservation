@@ -488,12 +488,13 @@ app.put('/api/store/:storeId/settings', async (req, res) => {
   }
   if (req.body.wecom_webhook !== undefined) {
     store.wecom_webhook = req.body.wecom_webhook;
+    const metaKey = 'wecom_webhook_' + req.params.storeId;
     try {
-      const { error } = await supabase.from('meta').upsert(
-        { key: 'wecom_webhook_' + req.params.storeId, value: store.wecom_webhook }
-      );
-      if (error) console.error('❌ 保存企微地址失败:', error.message);
-    } catch(e) { console.error('❌ 保存企微地址异常:', e.message); }
+      // 先删再插，绕过upsert可能的RLS限制
+      await supabase.from('meta').delete().eq('key', metaKey);
+      const { error } = await supabase.from('meta').insert({ key: metaKey, value: store.wecom_webhook });
+      if (error) console.error('❌ 保存企微失败:', error.message);
+    } catch(e) { console.error('❌ 保存企微异常:', e.message); }
   }
   invalidateCache();
   res.json({ name: store.name, wecom_webhook: store.wecom_webhook });
