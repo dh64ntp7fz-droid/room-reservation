@@ -408,6 +408,14 @@ body {
       <input type="text" id="storeWebhookInput" placeholder="企微机器人Webhook地址" style="width:100%;padding:8px 12px;border:2px solid #e8e8e8;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
       <button class="add-btn" onclick="saveStoreWebhook()" style="margin-top:6px">💾 保存企微地址</button>
     </div>
+    <div style="margin-top:10px">
+      <input type="text" id="storePhoneInput" placeholder="门店电话（如：0769-81665010）" style="width:100%;padding:8px 12px;border:2px solid #e8e8e8;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+      <button class="add-btn" onclick="saveStorePhone()" style="margin-top:6px">💾 保存电话</button>
+    </div>
+    <div style="margin-top:10px">
+      <input type="text" id="storeNavInput" placeholder="导航地址（如：https://surl.amap.com/xxx），留空不显示" style="width:100%;padding:8px 12px;border:2px solid #e8e8e8;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+      <button class="add-btn" onclick="saveStoreNav()" style="margin-top:6px">💾 保存导航</button>
+    </div>
     <div style="margin-top:16px">
       <h4 style="margin:0 0 8px 0">桌台管理（当前门店）</h4>
       <div class="add-table-form">
@@ -1052,28 +1060,32 @@ async function onAdminStoreSwitch() {
   const storeId = document.getElementById('adminStoreSelect').value;
   const storeName = document.getElementById('adminStoreSelect').selectedOptions[0].textContent;
   document.getElementById('storeNameInput').value = storeName.split('·')[0].trim();
-  // 加载企微地址
   try {
     const r = await fetch(`/api/store/${storeId}`, {headers:{'Authorization':'Bearer '+state.token}});
     const d = await r.json();
     document.getElementById('storeWebhookInput').value = d.wecom_webhook || '';
+    document.getElementById('storePhoneInput').value = d.phone || '';
+    document.getElementById('storeNavInput').value = d.nav_url || '';
   } catch {}
   await loadTablesForStore(storeId);
 }
 
-async function saveStoreWebhook() {
+async function saveStoreSetting(field, inputId, apiField) {
   const storeId = document.getElementById('adminStoreSelect').value;
-  const webhook = document.getElementById('storeWebhookInput').value.trim();
+  const val = document.getElementById(inputId).value.trim();
   try {
     const r = await fetch(`/api/store/${storeId}/settings`, {
       method:'PUT',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
-      body: JSON.stringify({ wecom_webhook: webhook })
+      body: JSON.stringify({ [apiField]: val })
     });
-    if (r.ok) { toast('企微地址已保存', 'success'); }
+    if (r.ok) { toast('已保存', 'success'); }
     else { toast('保存失败', 'error'); }
   } catch { toast('保存失败', 'error'); }
 }
+function saveStoreWebhook() { saveStoreSetting('wecom_webhook', 'storeWebhookInput', 'wecom_webhook'); }
+function saveStorePhone() { saveStoreSetting('phone', 'storePhoneInput', 'phone'); }
+function saveStoreNav() { saveStoreSetting('nav_url', 'storeNavInput', 'nav_url'); }
 
 async function loadTablesForStore(storeId) {
   try {

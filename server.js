@@ -109,6 +109,8 @@ async function loadData() {
     // 补充各门店的企微地址（存于meta表）
     for (const sId of Object.keys(stores)) {
       stores[sId].wecom_webhook = metaObj['wecom_webhook_' + sId] || '';
+      stores[sId].phone = metaObj['store_phone_' + sId] || '';
+      stores[sId].nav_url = metaObj['store_nav_url_' + sId] || '';
     }
 
     dataCache = { stores, users, tokens, meta: metaObj };
@@ -242,7 +244,7 @@ app.get('/api/store/:storeId', async (req, res) => {
   const data = await loadData();
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
-  res.json({ id: store.id, name: store.name, tables: store.tables, wecom_webhook: store.wecom_webhook || '' });
+  res.json({ id: store.id, name: store.name, tables: store.tables, wecom_webhook: store.wecom_webhook || '', phone: store.phone || '', nav_url: store.nav_url || '' });
 });
 
 app.get('/api/store/:storeId/bookings', async (req, res) => {
@@ -300,7 +302,7 @@ app.post('/api/store/:storeId/bookings', async (req, res) => {
   }); invalidateCache();
 
   notifyAll('updated', { action: 'created', booking, store: req.params.storeId });
-  sendWecomNotification('created', booking, store.name, store.wecom_webhook);
+  sendWecomNotification('created', booking, store.name, store.wecom_webhook, store.phone, store.nav_url);
   sendSmsNotification('created', booking);
   res.json(booking);
 });
@@ -374,7 +376,7 @@ app.delete('/api/store/:storeId/bookings/:id', async (req, res) => {
   await supabase.from('bookings').delete().eq('id', req.params.id); invalidateCache();
 
   notifyAll('updated', { action: 'deleted', id: removed.id, tables: removed.tables, store: req.params.storeId });
-  sendWecomNotification('deleted', removed, store.name, store.wecom_webhook);
+  sendWecomNotification('deleted', removed, store.name, store.wecom_webhook, store.phone, store.nav_url);
   sendSmsNotification('deleted', removed);
   res.json({ success: true });
 });
@@ -490,14 +492,33 @@ app.put('/api/store/:storeId/settings', async (req, res) => {
     store.wecom_webhook = req.body.wecom_webhook;
     const metaKey = 'wecom_webhook_' + req.params.storeId;
     try {
-      // 先删再插，绕过upsert可能的RLS限制
       await supabase.from('meta').delete().eq('key', metaKey);
       const { error } = await supabase.from('meta').insert({ key: metaKey, value: store.wecom_webhook });
       if (error) console.error('❌ 保存企微失败:', error.message);
     } catch(e) { console.error('❌ 保存企微异常:', e.message); }
   }
+  // 门店电话
+  if (req.body.phone !== undefined) {
+    store.phone = req.body.phone;
+    const metaKey = 'store_phone_' + req.params.storeId;
+    try {
+      await supabase.from('meta').delete().eq('key', metaKey);
+      const { error } = await supabase.from('meta').insert({ key: metaKey, value: store.phone });
+      if (error) console.error('❌ 保存电话失败:', error.message);
+    } catch(e) { console.error('❌ 保存电话异常:', e.message); }
+  }
+  // 导航地址
+  if (req.body.nav_url !== undefined) {
+    store.nav_url = req.body.nav_url;
+    const metaKey = 'store_nav_url_' + req.params.storeId;
+    try {
+      await supabase.from('meta').delete().eq('key', metaKey);
+      const { error } = await supabase.from('meta').insert({ key: metaKey, value: store.nav_url });
+      if (error) console.error('❌ 保存导航失败:', error.message);
+    } catch(e) { console.error('❌ 保存导航异常:', e.message); }
+  }
   invalidateCache();
-  res.json({ name: store.name, wecom_webhook: store.wecom_webhook });
+  res.json({ name: store.name, wecom_webhook: store.wecom_webhook, phone: store.phone, nav_url: store.nav_url });
 });
 
 app.delete('/api/admin/stores/:storeId', async (req, res) => {
@@ -594,7 +615,7 @@ function timeToMinutes(t) {
 }
 
 // ── 企业微信通知 ──
-async function sendWecomNotification(type, booking, storeName, storeWebhook) {
+async function sendWecomNotification(type, booking, storeName, storeWebhook, storePhone, storeNavUrl) {
   const webhookUrl = storeWebhook || WECOM_WEBHOOK_URL;
   if (!webhookUrl) return;
 
@@ -607,7 +628,10 @@ async function sendWecomNotification(type, booking, storeName, storeWebhook) {
   let title, content;
   if (type === 'created') {
     title = '📋 包间预订成功';
-    content = `尊敬的${booking.name},您好!您已成功预订湘阁里辣(${storeName}):\n• 包间号/台号:${tablesDisplay}\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:${phoneDisplay}\n• 特别备注:${booking.note || '无'}\n• 免费停车:餐厅有地面停车场,消费免停2小时\n• [点击导航](https://surl.amap.com/flASiCC19gwW)\n• 服务电话:0769-82238202\n\n湘阁里辣${storeName}全体伙伴恭候您的到来!`;
+    const navLine = storeNavUrl ? '\\n• [点击导航](' + storeNavUrl + ')' : '';
+    const phoneLine = storePhone ? '\\n• 服务电话:' + storePhone : '';
+    const base = '尊敬的${booking.name},您好!您已成功预订湘阁里辣(${storeName}):';
+    content = base + '\\n• 包间号/台号:' + tablesDisplay + '\\n• 预定时间:' + month + '月' + day + '号 ' + booking.time + '\\n• 预定人数:' + booking.people + '人\\n• 预留手机:' + phoneDisplay + '\\n• 特别备注:' + (booking.note || '无') + '\\n• 免费停车:餐厅有地面停车场,消费免停2小时' + navLine + phoneLine + '\\n\\n湘阁里辣' + storeName + '全体伙伴恭候您的到来!';
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
     content = `尊敬的${booking.name},您好!\n您已取消湘阁里辣(${storeName})的预订:\n• 包间号/台号:${tablesDisplay}\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:${booking.phone || '无'}\n• 特别备注:${booking.note || '无'}\n\n感谢您的理解,欢迎下次光临!`;
