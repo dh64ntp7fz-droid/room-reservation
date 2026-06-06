@@ -667,8 +667,8 @@ function renderGrid() {
       .filter(b => timeToMinutes(b.time) > currentMinutes)
       .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
     
-    // 全天总单数 ≥2 且还有未过期 → 红色预警
-    const isMulti = allToday.length >= 2 && activeBookings.length > 0;
+    // 有未过期的预订 → 红底预警（所有预订桌台统一显示）
+    const isMulti = activeBookings.length > 0;
     
     if (activeBookings.length === 0) {
       // ── 空闲（时间过的自动释放，不留痕迹） ──
@@ -681,7 +681,7 @@ function renderGrid() {
     }
     
     const multiClass = isMulti ? ' multi-warn' : '';
-    const statusColor = isMulti ? 'warn' : 'booked';
+    const statusColor = 'warn';
     
     const slotHtml = activeBookings.map((b, i) => {
       const mins = timeToMinutes(b.time);
