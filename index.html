@@ -662,9 +662,10 @@ function renderGrid() {
     const allToday = state.bookings
       .filter(b => (b.tables || []).includes(t.name) && b.date === today);
     
-    // 只显示还没到时间的
+    // 只对今天做时间过滤（过点释放），看未来日期全部显示
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
     const activeBookings = allToday
-      .filter(b => timeToMinutes(b.time) > currentMinutes)
+      .filter(b => todayStr !== state.date || timeToMinutes(b.time) > currentMinutes)
       .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
     
     // 有未过期的预订 → 红底预警（所有预订桌台统一显示）
@@ -734,7 +735,8 @@ function renderBookingTable() {
     const mins = timeToMinutes(b.time);
     const now = new Date();
     const curMins = now.getHours() * 60 + now.getMinutes();
-    const isPast = b.date === state.date && mins <= curMins;
+    const todayStr2 = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+    const isPast = b.date === todayStr2 && mins <= curMins;
     const rowClass = isPast ? ' class="row-past"' : '';
     return `<tr${rowClass}>
       <td><strong>${tablesStr}</strong></td>
