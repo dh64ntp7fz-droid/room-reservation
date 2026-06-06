@@ -74,7 +74,6 @@ async function loadData() {
         id: s.id,
         name: s.name,
         tables: s.tables_config || [],
-        wecom_webhook: s.wecom_webhook || '',
         bookings: (bookingsRes.data || []).filter(b => b.store_id === s.id).map(b => ({
           id: b.id, tables: b.tables, name: b.name, phone: b.phone || '',
           people: b.people, time: b.time, date: b.date, note: b.note || '',
@@ -105,6 +104,11 @@ async function loadData() {
     const metaObj = {};
     for (const m of (metaRes.data || [])) {
       metaObj[m.key] = m.value;
+    }
+
+    // 补充各门店的企微地址（存于meta表）
+    for (const sId of Object.keys(stores)) {
+      stores[sId].wecom_webhook = metaObj['wecom_webhook_' + sId] || '';
     }
 
     dataCache = { stores, users, tokens, meta: metaObj };
@@ -484,7 +488,7 @@ app.put('/api/store/:storeId/settings', async (req, res) => {
   }
   if (req.body.wecom_webhook !== undefined) {
     store.wecom_webhook = req.body.wecom_webhook;
-    await supabase.from('stores').update({ wecom_webhook: store.wecom_webhook }).eq('id', req.params.storeId);
+    await supabase.from('meta').upsert({ key: 'wecom_webhook_' + req.params.storeId, value: store.wecom_webhook });
   }
   invalidateCache();
   res.json({ name: store.name, wecom_webhook: store.wecom_webhook });
