@@ -665,7 +665,7 @@ function renderGrid() {
     }
     
     const multiClass = isMulti ? ' multi-warn' : '';
-    const statusText = isMulti ? `⚠ ${allToday.length}单待接` : '已预订';
+    const statusText = isMulti ? `⚠ 今日${allToday.length}单` : '已预订';
     const statusColor = isMulti ? 'warn' : 'booked';
     
     const slotHtml = activeBookings.map((b, i) => {
