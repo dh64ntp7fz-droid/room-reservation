@@ -444,7 +444,7 @@ app.delete('/api/store/:storeId/tables/:name', async (req, res) => {
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
 
-  const name = decodeURIComponent(req.params.name);
+  const name = req.params.name;
   if ((store.bookings || []).some(b => b.tables && b.tables.includes(name))) {
     return res.status(400).json({ error: `桌台 ${name} 当前有预订,请先取消` });
   }
@@ -563,8 +563,7 @@ app.post('/api/admin/users', async (req, res) => {
 
   // 如果门店不存在,自动创建
   if (!data.stores[store]) {
-    const defaultTables = createDefaultData().stores.dalang.tables;
-    await supabase.from('stores').insert({ id: store, name: store, tables_config: defaultTables });
+    await supabase.from('stores').insert({ id: store, name: store, tables_config: [] });
     console.log('🏪 自动创建门店:', store);
   }
 
