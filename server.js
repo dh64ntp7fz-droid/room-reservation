@@ -74,6 +74,7 @@ async function loadData() {
         id: s.id,
         name: s.name,
         tables: s.tables_config || [],
+        wecom_webhook: s.wecom_webhook || '',
         bookings: (bookingsRes.data || []).filter(b => b.store_id === s.id).map(b => ({
           id: b.id, tables: b.tables, name: b.name, phone: b.phone || '',
           people: b.people, time: b.time, date: b.date, note: b.note || '',
@@ -295,7 +296,7 @@ app.post('/api/store/:storeId/bookings', async (req, res) => {
   }); invalidateCache();
 
   notifyAll('updated', { action: 'created', booking, store: req.params.storeId });
-  sendWecomNotification('created', booking, store.name);
+  sendWecomNotification('created', booking, store.name, store.wecom_webhook);
   sendSmsNotification('created', booking);
   res.json(booking);
 });
@@ -481,7 +482,12 @@ app.put('/api/store/:storeId/settings', async (req, res) => {
     store.name = req.body.name;
     await supabase.from('stores').update({ name: store.name }).eq('id', req.params.storeId);
   }
-  res.json({ name: store.name });
+  if (req.body.wecom_webhook !== undefined) {
+    store.wecom_webhook = req.body.wecom_webhook;
+    await supabase.from('stores').update({ wecom_webhook: store.wecom_webhook }).eq('id', req.params.storeId);
+  }
+  invalidateCache();
+  res.json({ name: store.name, wecom_webhook: store.wecom_webhook });
 });
 
 app.delete('/api/admin/stores/:storeId', async (req, res) => {
