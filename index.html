@@ -416,6 +416,10 @@ body {
       <input type="text" id="storeNavInput" placeholder="导航地址（如：https://surl.amap.com/xxx），留空不显示" style="width:100%;padding:8px 12px;border:2px solid #e8e8e8;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
       <button class="add-btn" onclick="saveStoreNav()" style="margin-top:6px">💾 保存导航</button>
     </div>
+    <div style="margin-top:10px">
+      <input type="number" id="storeParkingInput" placeholder="免费停车小时数（如：2）" style="width:100%;padding:8px 12px;border:2px solid #e8e8e8;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+      <button class="add-btn" onclick="saveStoreParking()" style="margin-top:6px">💾 保存停车小时</button>
+    </div>
     <div style="margin-top:16px">
       <h4 style="margin:0 0 8px 0">桌台管理（当前门店）</h4>
       <div class="add-table-form">
@@ -1066,6 +1070,7 @@ async function onAdminStoreSwitch() {
     document.getElementById('storeWebhookInput').value = d.wecom_webhook || '';
     document.getElementById('storePhoneInput').value = d.phone || '';
     document.getElementById('storeNavInput').value = d.nav_url || '';
+    document.getElementById('storeParkingInput').value = d.parking || 2;
   } catch {}
   await loadTablesForStore(storeId);
 }
@@ -1086,6 +1091,7 @@ async function saveStoreSetting(field, inputId, apiField) {
 function saveStoreWebhook() { saveStoreSetting('wecom_webhook', 'storeWebhookInput', 'wecom_webhook'); }
 function saveStorePhone() { saveStoreSetting('phone', 'storePhoneInput', 'phone'); }
 function saveStoreNav() { saveStoreSetting('nav_url', 'storeNavInput', 'nav_url'); }
+function saveStoreParking() { saveStoreSetting('parking', 'storeParkingInput', 'parking'); }
 
 async function loadTablesForStore(storeId) {
   try {
