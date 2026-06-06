@@ -382,26 +382,29 @@ app.get('/api/store/:storeId/history', async (req, res) => {
 });
 
 app.get('/api/store/:storeId/history/export', async (req, res) => {
-  const data = await loadData();
-  const user = requireAuth(req, res, data);
-  if (!user) return;
-  const store = data.stores[req.params.storeId];
-  if (!store) return res.status(404).json({ error: '门店不存在' });
+  try {
+    const data = await loadData();
+    const user = requireAuth(req, res, data);
+    if (!user) return;
+    const store = data.stores[req.params.storeId];
+    if (!store) return res.status(404).json({ error: '门店不存在' });
 
-  const BOM = '﻿';
-  const headers = ['日期', '时间', '桌台', '姓名', '手机', '人数', '备注', '状态', '创建人', '创建时间', '取消/归档时间'];
-  const rows = (store.history || []).map(b => {
-    const dp = (b.date || '').split('-');
-    const ds = `${dp[0]}年${parseInt(dp[1])}月${parseInt(dp[2])}日`;
-    const status = b.status === 'cancelled' ? '已取消' : (b.status === 'auto_reset' ? '已清空' : '已完成');
-    return [ds, b.time, (b.tables || []).join('/'), b.name, b.phone || '', String(b.people), b.note || '', status, b.createdBy || '', b.createdAt || '', b.cancelledAt || b.archivedAt || '']
-      .map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
-  });
-
-  const csv = BOM + [headers.join(','), ...rows].join('\n');
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${store.name}_历史记录_${getDateString()}.csv"`);
-  res.send(csv);
+    const headers = ['日期','时间','桌台','姓名','手机','人数','备注','状态','创建人','创建时间','取消/归档时间'];
+    const rows = (store.history || []).map(b => {
+      const dp = (b.date || '').split('-');
+      const ds = `${dp[0]}年${parseInt(dp[1])}月${parseInt(dp[2])}日`;
+      const status = b.status === 'cancelled' ? '已取消' : (b.status === 'auto_reset' ? '已清空' : '已完成');
+      return [ds, b.time, (b.tables||[]).join('/'), b.name, b.phone||'', String(b.people), b.note||'', status, b.createdBy||'', b.createdAt||'', b.cancelledAt||b.archivedAt||'']
+        .map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',');
+    });
+    const csv = '\ufeff' + [headers.join(','), ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="history.csv"');
+    res.send(csv);
+  } catch(e) {
+    console.error('导出失败:', e);
+    res.status(500).json({ error: '导出失败: ' + e.message });
+  }
 });
 
 // ── 管理后台 API ──
