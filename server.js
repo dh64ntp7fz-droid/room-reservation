@@ -399,7 +399,7 @@ app.get('/api/store/:storeId/history/export', async (req, res) => {
     });
     const csv = '\ufeff' + [headers.join(','), ...rows].join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="history.csv"');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(store.name)}_历史记录_${getDateString()}.csv"`);
     res.send(csv);
   } catch(e) {
     console.error('导出失败:', e);
