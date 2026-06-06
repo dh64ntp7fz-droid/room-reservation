@@ -123,18 +123,22 @@ body {
 
 /* ── 多时段预订卡片 ── */
 .room-card.multi-booking { cursor:default; padding-bottom:10px; }
+.room-card.multi-warn {
+  background:linear-gradient(135deg,#FFF0F0,#FFD0D0) !important;
+  border-color:#DA251D !important;
+  box-shadow:0 0 0 2px rgba(218,37,29,0.3);
+}
+.room-card.multi-warn .room-name { color:#DA251D; }
 .booking-slots-wrap { display:flex; flex-direction:column; gap:6px; margin:6px 0 0; }
 .booking-slot {
   border-radius:8px; padding:8px 10px; cursor:pointer; text-align:left;
   transition:all .15s; position:relative; font-size:13px;
+  background:#E3F0FF; border-left:3px solid #4A9EFF;
 }
-.booking-slot.slot-primary { background:#E3F0FF; border-left:3px solid #4A9EFF; }
-.booking-slot.slot-secondary { background:#F3E5F5; border-left:3px solid #9C27B0; }
 .booking-slot:hover { transform:translateX(2px); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
 .slot-header { display:flex; align-items:center; gap:6px; margin-bottom:2px; }
 .slot-time { font-weight:700; font-size:14px; color:var(--text); }
 .slot-period { font-size:11px; padding:1px 6px; border-radius:4px; font-weight:600; }
-.slot-period:has(.morning) { background:#FFF3E0; color:#E65100; }
 .slot-body { color:var(--text-light); line-height:1.6; font-size:12px; }
 .slot-body strong { color:var(--text); }
 .btn-small-cancel {
@@ -143,11 +147,11 @@ body {
   cursor:pointer; font-family:inherit;
 }
 .btn-small-cancel:hover { background:rgba(183,28,28,0.15); color:#B71C1C; }
-.past-note { font-size:10px; color:#999; text-align:center; padding:2px; }
 
-/* ── 全部已过期 ── */
-.room-card.all-past { opacity:0.65; }
-.room-card.all-past .room-name { color:#999; }
+/* ── 状态标签 ── */
+.room-status.warn { color:#DA251D; background:rgba(218,37,29,0.12); }
+.room-status.warn .status-dot { background:#DA251D; animation:pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 .room-name { font-size:17px; font-weight:700; margin-top:6px; margin-bottom:6px; }
 .room-category { font-size:11px; color:var(--text-light); margin-bottom:6px; }
 .room-status {
@@ -638,13 +642,13 @@ function renderGrid() {
     const catClass = getCatClass(t);
     const catLabel = t.category || '';
     
-    // 找当前日期该桌台的所有预订（按时间排序）
-    const tableBookings = state.bookings
-      .filter(b => (b.tables || []).includes(t.name) && b.date === today)
+    // 找当前日期该桌台所有未过期的预订（时间还没到的）
+    const activeBookings = state.bookings
+      .filter(b => (b.tables || []).includes(t.name) && b.date === today && timeToMinutes(b.time) > currentMinutes)
       .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
     
-    if (tableBookings.length === 0) {
-      // ── 空闲 ──
+    if (activeBookings.length === 0) {
+      // ── 空闲（时间过的自动释放，不留痕迹） ──
       return `<div class="room-card ${catClass}">
         <div class="room-name">${t.name}</div>
         <div class="room-category">${catLabel}</div>
@@ -653,58 +657,39 @@ function renderGrid() {
       </div>`;
     }
     
-    // 按时间分段：已过期 vs 未过期
-    const past = tableBookings.filter(b => timeToMinutes(b.time) <= currentMinutes);
-    const future = tableBookings.filter(b => timeToMinutes(b.time) > currentMinutes);
+    // 1单 → 蓝色；2单及以上 → 大红色预警
+    const isMulti = activeBookings.length >= 2;
+    const multiClass = isMulti ? ' multi-warn' : '';
+    const statusText = isMulti ? `⚠ ${activeBookings.length}单待接` : '已预订';
+    const statusColor = isMulti ? 'warn' : 'booked';
     
-    // 有未来预订 → 显示预订卡片
-    if (future.length > 0) {
-      const timeSlots = future.map((b, i) => {
-        const mins = timeToMinutes(b.time);
-        const isMorning = mins < 840;
-        const timeLabel = isMorning ? '🌅 午市' : '🌙 晚市';
-        // 交替颜色：第一个蓝色，第二个紫色
-        const colorClass = i % 2 === 0 ? 'slot-primary' : 'slot-secondary';
-        return `<div class="booking-slot ${colorClass}" onclick="editBooking('${b.id}')">
-          <div class="slot-header">
-            <span class="slot-time">${b.time}</span>
-            <span class="slot-period">${timeLabel}</span>
-          </div>
-          <div class="slot-body">
-            <strong>${b.name}</strong> · ${b.people}人
-            ${b.phone ? '<br>' + b.phone : ''}
-          </div>
-          <div class="slot-actions">
-            <button class="btn-small-cancel" onclick="event.stopPropagation();cancelBooking('${b.id}')">取消</button>
-          </div>
-        </div>`;
-      }).join('');
-      
-      // 如果有已过期的，在底部折叠显示
-      const pastNote = past.length > 0
-        ? `<div class="past-note">⚠ 已过期 ${past.length}单</div>`
-        : '';
-      
-      return `<div class="room-card ${catClass} multi-booking">
-        <div class="room-name">${t.name}</div>
-        <div class="room-category">${catLabel}</div>
-        <div class="booking-slots-wrap">
-          ${timeSlots}
-          ${pastNote}
+    const slotHtml = activeBookings.map((b, i) => {
+      const mins = timeToMinutes(b.time);
+      const isMorning = mins < 840;
+      const timeLabel = isMorning ? '🌅 午市' : '🌙 晚市';
+      const dp = (b.date||'').split('-');
+      const ds = `${parseInt(dp[1])||'?'}/${parseInt(dp[2])||'?'}`;
+      return `<div class="booking-slot" onclick="editBooking('${b.id}')">
+        <div class="slot-header">
+          <span class="slot-time">${b.time}</span>
+          <span class="slot-period">${timeLabel}</span>
         </div>
-        <button class="room-action free-action" onclick="openBooking('${t.name}')" style="margin-top:8px">📝 + 新增</button>
+        <div class="slot-body">
+          <strong>${b.name}</strong> · ${b.people}人
+          ${b.phone ? '<br>' + b.phone : ''}
+        </div>
+        <div class="slot-actions">
+          <button class="btn-small-cancel" onclick="event.stopPropagation();cancelBooking('${b.id}')">取消</button>
+        </div>
       </div>`;
-    }
+    }).join('');
     
-    // 全部已过期 → 显示"已完成"
-    return `<div class="room-card ${catClass} all-past">
+    return `<div class="room-card ${catClass}${multiClass}">
       <div class="room-name">${t.name}</div>
       <div class="room-category">${catLabel}</div>
-      <div class="room-status free"><span class="status-dot"></span>空闲</div>
-      <div style="font-size:11px;color:#999;margin-bottom:6px">
-        ${past.map(b => `${b.name} ${b.time} ✅`).join(' · ')}
-      </div>
-      <button class="room-action free-action" onclick="openBooking('${t.name}')">📝 预订</button>
+      <div class="room-status ${statusColor}"><span class="status-dot"></span>${statusText}</div>
+      <div class="booking-slots-wrap">${slotHtml}</div>
+      <button class="room-action free-action" onclick="openBooking('${t.name}')" style="margin-top:8px">📝 + 新增</button>
     </div>`;
   }).join('');
 }
