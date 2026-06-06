@@ -642,10 +642,17 @@ function renderGrid() {
     const catClass = getCatClass(t);
     const catLabel = t.category || '';
     
-    // 找当前日期该桌台所有未过期的预订（时间还没到的）
-    const activeBookings = state.bookings
-      .filter(b => (b.tables || []).includes(t.name) && b.date === today && timeToMinutes(b.time) > currentMinutes)
+    // 找当前日期该桌台所有预订（含已过期的，用于判断双单）
+    const allToday = state.bookings
+      .filter(b => (b.tables || []).includes(t.name) && b.date === today);
+    
+    // 只显示还没到时间的
+    const activeBookings = allToday
+      .filter(b => timeToMinutes(b.time) > currentMinutes)
       .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
+    
+    // 全天总单数 ≥2 且还有未过期 → 红色预警
+    const isMulti = allToday.length >= 2 && activeBookings.length > 0;
     
     if (activeBookings.length === 0) {
       // ── 空闲（时间过的自动释放，不留痕迹） ──
@@ -657,18 +664,14 @@ function renderGrid() {
       </div>`;
     }
     
-    // 1单 → 蓝色；2单及以上 → 大红色预警
-    const isMulti = activeBookings.length >= 2;
     const multiClass = isMulti ? ' multi-warn' : '';
-    const statusText = isMulti ? `⚠ ${activeBookings.length}单待接` : '已预订';
+    const statusText = isMulti ? `⚠ ${allToday.length}单待接` : '已预订';
     const statusColor = isMulti ? 'warn' : 'booked';
     
     const slotHtml = activeBookings.map((b, i) => {
       const mins = timeToMinutes(b.time);
       const isMorning = mins < 840;
       const timeLabel = isMorning ? '🌅 午市' : '🌙 晚市';
-      const dp = (b.date||'').split('-');
-      const ds = `${parseInt(dp[1])||'?'}/${parseInt(dp[2])||'?'}`;
       return `<div class="booking-slot" onclick="editBooking('${b.id}')">
         <div class="slot-header">
           <span class="slot-time">${b.time}</span>
