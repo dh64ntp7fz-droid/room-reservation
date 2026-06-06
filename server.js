@@ -398,8 +398,9 @@ app.get('/api/store/:storeId/history/export', async (req, res) => {
         .map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',');
     });
     const csv = '\ufeff' + [headers.join(','), ...rows].join('\n');
+    const fname = 'history_' + getDateString() + '.csv';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(store.name)}_历史记录_${getDateString()}.csv"`);
+    res.setHeader('Content-Disposition', 'attachment; filename="' + fname + '"');
     res.send(csv);
   } catch(e) {
     console.error('导出失败:', e);
