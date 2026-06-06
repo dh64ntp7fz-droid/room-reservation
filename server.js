@@ -374,7 +374,7 @@ app.delete('/api/store/:storeId/bookings/:id', async (req, res) => {
   await supabase.from('bookings').delete().eq('id', req.params.id); invalidateCache();
 
   notifyAll('updated', { action: 'deleted', id: removed.id, tables: removed.tables, store: req.params.storeId });
-  sendWecomNotification('deleted', removed, store.name);
+  sendWecomNotification('deleted', removed, store.name, store.wecom_webhook);
   sendSmsNotification('deleted', removed);
   res.json({ success: true });
 });
