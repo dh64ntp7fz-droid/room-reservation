@@ -637,7 +637,7 @@ async function sendWecomNotification(type, booking, storeName, storeWebhook, sto
 
   let title, content;
   if (type === 'created') {
-    title = '📋 包间预订成功';
+    title = '[太阳] 包间预订成功';
     const navLine = storeNavUrl ? '\n• [点击导航](' + storeNavUrl + ')' : '';
     const parking = storeParking || 2;
     const phoneLine = storePhone ? '\n• 服务电话:' + storePhone : '';
