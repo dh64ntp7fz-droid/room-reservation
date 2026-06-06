@@ -404,6 +404,10 @@ body {
       <button class="add-btn" onclick="updateStoreName()">💾 改名称</button>
       <button class="add-btn" onclick="deleteStore()" style="background:#e74c3c">🗑 删门店</button>
     </div>
+    <div style="margin-top:12px">
+      <input type="text" id="storeWebhookInput" placeholder="企微机器人Webhook地址" style="width:100%;padding:8px 12px;border:2px solid #e8e8e8;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+      <button class="add-btn" onclick="saveStoreWebhook()" style="margin-top:6px">💾 保存企微地址</button>
+    </div>
     <div style="margin-top:16px">
       <h4 style="margin:0 0 8px 0">桌台管理（当前门店）</h4>
       <div class="add-table-form">
@@ -1048,7 +1052,27 @@ async function onAdminStoreSwitch() {
   const storeId = document.getElementById('adminStoreSelect').value;
   const storeName = document.getElementById('adminStoreSelect').selectedOptions[0].textContent;
   document.getElementById('storeNameInput').value = storeName.split('·')[0].trim();
+  // 加载企微地址
+  try {
+    const r = await fetch(`/api/store/${storeId}`, {headers:{'Authorization':'Bearer '+state.token}});
+    const d = await r.json();
+    document.getElementById('storeWebhookInput').value = d.wecom_webhook || '';
+  } catch {}
   await loadTablesForStore(storeId);
+}
+
+async function saveStoreWebhook() {
+  const storeId = document.getElementById('adminStoreSelect').value;
+  const webhook = document.getElementById('storeWebhookInput').value.trim();
+  try {
+    const r = await fetch(`/api/store/${storeId}/settings`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
+      body: JSON.stringify({ wecom_webhook: webhook })
+    });
+    if (r.ok) { toast('企微地址已保存', 'success'); }
+    else { toast('保存失败', 'error'); }
+  } catch { toast('保存失败', 'error'); }
 }
 
 async function loadTablesForStore(storeId) {

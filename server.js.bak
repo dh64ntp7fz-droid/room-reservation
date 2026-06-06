@@ -238,7 +238,7 @@ app.get('/api/store/:storeId', async (req, res) => {
   const data = await loadData();
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
-  res.json({ id: store.id, name: store.name, tables: store.tables, wecom_webhook: store.wecom_webhook || '' });
+  res.json({ id: store.id, name: store.name, tables: store.tables });
 });
 
 app.get('/api/store/:storeId/bookings', async (req, res) => {
@@ -584,9 +584,8 @@ function timeToMinutes(t) {
 }
 
 // ── 企业微信通知 ──
-async function sendWecomNotification(type, booking, storeName, storeWebhook) {
-  const webhookUrl = storeWebhook || WECOM_WEBHOOK_URL;
-  if (!webhookUrl) return;
+async function sendWecomNotification(type, booking, storeName) {
+  if (!WECOM_WEBHOOK_URL) return;
 
   const dp = (booking.date || '').split('-');
   const month = parseInt(dp[1]) || '?';
@@ -607,7 +606,7 @@ async function sendWecomNotification(type, booking, storeName, storeWebhook) {
 
   return new Promise((resolve) => {
     try {
-      const u = new URL(webhookUrl);
+      const u = new URL(WECOM_WEBHOOK_URL);
       const mod = u.protocol === 'https:' ? https : http;
       const req = mod.request({
         hostname: u.hostname, port: u.port, path: u.pathname + u.search,
