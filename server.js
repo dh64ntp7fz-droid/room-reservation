@@ -647,7 +647,7 @@ async function sendWecomNotification(type, booking, storeName, storeWebhook, sto
     content = `尊敬的${booking.name},您好!\n您已取消湘阁里辣(${storeName})的预订:\n• 包间号/台号:${tablesDisplay}\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:${booking.phone || '无'}\n• 特别备注:${booking.note || '无'}\n\n感谢您的理解,欢迎下次光临!`;
   } else return;
 
-  const body = JSON.stringify({ msgtype: 'markdown', markdown: { content: `<font color="warning">## ${title}</font>\n${content}` } });
+  const body = JSON.stringify({ msgtype: 'markdown', markdown: { content: `## <font color="warning">${title}</font>\n${content}` } });
 
   return new Promise((resolve) => {
     try {
