@@ -152,10 +152,10 @@ async function checkAutoReset() {
   if (today === lastResetDate) return;
   lastResetDate = today;
 
-  // 把当天预订移到历史
-  const { data: allBookings } = await supabase.from('bookings').select('*');
-  if (allBookings && allBookings.length > 0) {
-    const historyRows = allBookings.map(b => ({
+  // 把当前及之前日期的预订移到历史（保留未来预订！）
+  const { data: todayBookings } = await supabase.from('bookings').select('*').lte('date', today);
+  if (todayBookings && todayBookings.length > 0) {
+    const historyRows = todayBookings.map(b => ({
       id: b.id + '_reset', store_id: b.store_id, tables: b.tables,
       name: b.name, phone: b.phone, people: b.people, time: b.time,
       date: b.date, note: b.note, created_by: b.created_by,
@@ -163,9 +163,12 @@ async function checkAutoReset() {
       status: 'auto_reset', archived_at: new Date().toISOString()
     }));
     await supabase.from('history').insert(historyRows);
-    await supabase.from('bookings').delete().neq('id', '');
-    console.log(`🔄 凌晨自动清空: ${allBookings.length} 条预订已移至历史`);
-    notifyAll('reset', { date: today, count: allBookings.length });
+    // 只删除已过期的预订（date <= today）
+    for (const b of todayBookings) {
+      await supabase.from('bookings').delete().eq('id', b.id);
+    }
+    console.log(`🔄 凌晨自动清空: ${todayBookings.length} 条过期预订已移至历史`);
+    notifyAll('reset', { date: today, count: todayBookings.length });
   }
 
   // 清理超过7天的历史
