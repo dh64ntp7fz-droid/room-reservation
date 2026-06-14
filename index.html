@@ -455,7 +455,7 @@ body {
     </div>
   </div>
   <table class="booking-table" id="bookingTable" style="display:block">
-    <thead><tr><th>桌台</th><th>时间</th><th>姓名</th><th>手机</th><th>人数</th><th>操作</th></tr></thead>
+    <thead><tr id="bookingTableHead"><th>桌台</th><th>时间</th><th>姓名</th><th>手机</th><th>人数</th><th>操作</th></tr></thead>
     <tbody id="bookingTbody"></tbody>
   </table>
   <div class="no-data" id="noData">暂无预订记录</div>
@@ -513,7 +513,7 @@ let state = {
   token: '', user: null, store: 'dalang', storeName: '',
   tables: [], bookings: [], date: '', history: [],
   currentTab: 'today', isAdmin: false, adminVisible: false,
-  editId: null, selectedTables: []
+  editId: null, selectedTables: [], currentStore: ''
 };
 
 // ── 初始化 ──
@@ -599,16 +599,53 @@ async function initApp() {
 
 // ── 加载数据 ──
 async function loadAll() {
-  try {
-    const r = await fetch(`/api/store/${state.store}/bookings?date=${state.date}`, {
-      headers:{'Authorization':'Bearer '+state.token}
-    });
-    if (!r.ok) throw new Error('auth');
-    state.bookings = await r.json();
-  } catch { state.bookings = []; }
+  if (state.isAdmin) {
+    try {
+      const r = await fetch(`/api/admin/unified?date=${state.date}`, {
+        headers:{'Authorization':'Bearer '+state.token}
+      });
+      if (!r.ok) throw new Error('auth');
+      state.allStoresData = await r.json();
+      // 合并所有门店的预订（标记门店）
+      state.bookings = [];
+      state.tables = [];
+      for (const s of state.allStoresData) {
+        for (const b of (s.bookings || [])) {
+          state.bookings.push({...b, _storeId: s.id, _storeName: s.name});
+        }
+        for (const t of (s.tables || [])) {
+          state.tables.push({...t, _storeId: s.id, _storeName: s.name});
+        }
+      }
+    } catch { state.bookings = []; state.allStoresData = []; }
+  } else {
+    try {
+      const r = await fetch(`/api/store/${state.store}/bookings?date=${state.date}`, {
+        headers:{'Authorization':'Bearer '+state.token}
+      });
+      if (!r.ok) throw new Error('auth');
+      state.bookings = await r.json();
+    } catch { state.bookings = []; }
+  }
   
   renderGrid();
   renderBookingTable();
+  // 管理员显示门店列
+  updateBookingTableHead();
+}
+
+function updateBookingTableHead() {
+  const head = document.getElementById('bookingTableHead');
+  if (!head) return;
+  const before = head.querySelector('.store-th');
+  if (state.isAdmin && !before) {
+    const th = document.createElement('th');
+    th.className = 'store-th';
+    th.textContent = '门店';
+    head.insertBefore(th, head.firstChild);
+  } else if (!state.isAdmin && before) {
+    before.remove();
+  }
 }
 
 // ── SSE 实时连接 ──
@@ -617,7 +654,7 @@ function connectSSE() {
   evt.addEventListener('updated', e => {
     try {
       const d = JSON.parse(e.data);
-      if (!d.store || d.store === state.store) {
+      if (state.isAdmin || !d.store || d.store === state.store) {
         loadAll();
         // 配置变更也刷新
       }
@@ -626,7 +663,7 @@ function connectSSE() {
   evt.addEventListener('config_update', e => {
     try {
       const d = JSON.parse(e.data);
-      if (d.store === state.store) { state.tables = d.tables; renderGrid(); }
+      if (state.isAdmin) { loadAll(); } else if (d.store === state.store) { state.tables = d.tables; renderGrid(); }
     } catch {}
   });
   evt.addEventListener('reset', e => { loadAll(); toast('已自动清空，历史记录已保留'); });
@@ -648,68 +685,81 @@ function getCatClass(table) {
   return 'cat-named';
 }
 
+function renderCard(catClass, catLabel, tName, activeBookings, storeId) {
+  if (activeBookings.length === 0) {
+    return `<div class="room-card ${catClass}">
+      <div class="room-name">${tName}</div>
+      <div class="room-category">${catLabel}</div>
+      <div class="room-status free"><span class="status-dot"></span>空闲</div>
+      <button class="room-action free-action" onclick="openBooking('${tName}','${storeId}')">📝 预订</button>
+    </div>`;
+  }
+  const multiClass = activeBookings.length > 1 ? ' multi-warn' : '';
+  const slotHtml = activeBookings.map((b, i) => {
+    const mins = timeToMinutes(b.time);
+    const isMorning = mins < 840;
+    const timeLabel = isMorning ? '🌅 午市' : '🌙 晚市';
+    return `<div class="booking-slot" onclick="editBooking('${b.id}')">
+      <div class="slot-header">
+        <span class="slot-time">${b.time}</span>
+        <span class="slot-period">${timeLabel}</span>
+      </div>
+      <div class="slot-body">
+        <strong>${b.name}</strong> · ${b.people}人
+        ${b.phone ? '<br>' + b.phone : ''}
+      </div>
+      <div class="slot-actions">
+        <button class="btn-small-cancel" onclick="event.stopPropagation();cancelBooking('${b.id}')">取消</button>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="room-card ${catClass}${multiClass}">
+    <div class="room-name">${tName}</div>
+    <div class="room-category">${catLabel}</div>
+    <div class="room-status warn"><span class="status-dot"></span>已预订</div>
+    <div class="booking-slots-wrap">${slotHtml}</div>
+    <button class="room-action free-action" onclick="openBooking('${tName}','${storeId}')" style="margin-top:8px">📝 + 新增</button>
+  </div>`;
+}
+
 function renderGrid() {
   const grid = document.getElementById('roomGrid');
   const today = state.date;
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+  const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
   
+  if (state.isAdmin && state.allStoresData) {
+    // ★ 管理员视图：按门店分组显示
+    let html = '';
+    for (const store of state.allStoresData) {
+      const storeBookings = store.bookings || [];
+      const storeTables = store.tables || [];
+      if (!storeTables.length) continue;
+      html += `<div style="${html ? 'margin-top:32px' : ''}">
+        <div class="section-title" style="font-size:16px;color:var(--primary);margin-bottom:10px">🏪 ${store.name}</div>
+        <div class="room-grid">`;
+      for (const t of storeTables) {
+        const catClass = getCatClass(t);
+        const allToday = storeBookings.filter(b => (b.tables || []).includes(t.name));
+        const active = allToday.filter(b => todayStr !== state.date || timeToMinutes(b.time) + 60 > currentMinutes)
+          .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
+        html += renderCard(catClass, t.category||'', t.name, active, store.id);
+      }
+      html += '</div></div>';
+    }
+    grid.innerHTML = html;
+    return;
+  }
+  
+  // ★ 普通视图
   grid.innerHTML = state.tables.map(t => {
     const catClass = getCatClass(t);
-    const catLabel = t.category || '';
-    
-    // 找当前日期该桌台所有预订（含已过期的，用于判断双单）
     const allToday = state.bookings
       .filter(b => (b.tables || []).includes(t.name) && b.date === today);
-    
-    // 只对今天做时间过滤（过点释放），看未来日期全部显示
-    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
     const activeBookings = allToday
       .filter(b => todayStr !== state.date || timeToMinutes(b.time) + 60 > currentMinutes)
       .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
-    
-    // 有未过期的预订 → 红底预警（所有预订桌台统一显示）
-    const isMulti = activeBookings.length > 0;
-    
-    if (activeBookings.length === 0) {
-      // ── 空闲（时间过的自动释放，不留痕迹） ──
-      return `<div class="room-card ${catClass}">
-        <div class="room-name">${t.name}</div>
-        <div class="room-category">${catLabel}</div>
-        <div class="room-status free"><span class="status-dot"></span>空闲</div>
-        <button class="room-action free-action" onclick="openBooking('${t.name}')">📝 预订</button>
-      </div>`;
-    }
-    
-    const multiClass = isMulti ? ' multi-warn' : '';
-    const statusColor = 'warn';
-    
-    const slotHtml = activeBookings.map((b, i) => {
-      const mins = timeToMinutes(b.time);
-      const isMorning = mins < 840;
-      const timeLabel = isMorning ? '🌅 午市' : '🌙 晚市';
-      return `<div class="booking-slot" onclick="editBooking('${b.id}')">
-        <div class="slot-header">
-          <span class="slot-time">${b.time}</span>
-          <span class="slot-period">${timeLabel}</span>
-        </div>
-        <div class="slot-body">
-          <strong>${b.name}</strong> · ${b.people}人
-          ${b.phone ? '<br>' + b.phone : ''}
-        </div>
-        <div class="slot-actions">
-          <button class="btn-small-cancel" onclick="event.stopPropagation();cancelBooking('${b.id}')">取消</button>
-        </div>
-      </div>`;
-    }).join('');
-    
-    return `<div class="room-card ${catClass}${multiClass}">
-      <div class="room-name">${t.name}</div>
-      <div class="room-category">${catLabel}</div>
-      <div class="room-status ${statusColor}"><span class="status-dot"></span>已预订</div>
-      <div class="booking-slots-wrap">${slotHtml}</div>
-      <button class="room-action free-action" onclick="openBooking('${t.name}')" style="margin-top:8px">📝 + 新增</button>
-    </div>`;
+    return renderCard(catClass, t.category||'', t.name, activeBookings, state.store);
   }).join('');
 }
 
@@ -738,8 +788,9 @@ function renderBookingTable() {
     const todayStr2 = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
     const isPast = b.date === todayStr2 && mins + 60 <= curMins;
     const rowClass = isPast ? ' class="row-past"' : '';
+    const storeCell = state.isAdmin ? `<td style="font-size:12px;color:var(--text-light)">${b._storeName||''}</td>` : '';
     return `<tr${rowClass}>
-      <td><strong>${tablesStr}</strong></td>
+      ${storeCell}<td><strong>${tablesStr}</strong></td>
       <td>${b.date} ${b.time}${isPast ? ' <span style="color:#999;font-size:11px">✅已过</span>' : ''}</td>
       <td>${b.name}</td>
       <td>${b.phone||'—'}</td>
@@ -760,9 +811,11 @@ function switchTab(tab) {
 }
 
 // ── 预订弹窗 ──
-function openBooking(presetTable) {
+function openBooking(presetTable, storeId) {
   state.editId = null;
   state.selectedTables = presetTable ? [presetTable] : [];
+  state.currentStore = storeId || state.store;
+  state._editStoreId = null;
   document.getElementById('modalTitle').textContent = '📝 预订登记';
   document.getElementById('formDate').value = state.date;
   document.getElementById('formTime').value = '18:00';
@@ -783,6 +836,8 @@ function editBooking(id) {
   
   state.editId = id;
   state.selectedTables = [...(booking.tables||[])];
+  state.currentStore = booking._storeId || state.store;
+  state._editStoreId = state.currentStore;
   document.getElementById('modalTitle').textContent = '✏️ 编辑预订';
   document.getElementById('formDate').value = booking.date;
   document.getElementById('formTime').value = booking.time;
@@ -827,7 +882,8 @@ function buildTableCheckGrid() {
     }
   });
   
-  grid.innerHTML = state.tables.map(t => {
+  const gridTables = state.isAdmin ? state.tables.filter(t => t._storeId === state.currentStore) : state.tables;
+  grid.innerHTML = gridTables.map(t => {
     const sel = state.selectedTables.includes(t.name);
     const disabled = bookedTables.has(t.name);
     let cls = 'table-check-item';
@@ -856,14 +912,15 @@ async function submitBooking() {
   const body = { tables, date, time, name, people, phone, note };
   
   try {
+    const targetStore = state.currentStore || state.store;
     let r;
     if (state.editId) {
-      r = await fetch(`/api/store/${state.store}/bookings/${state.editId}`, {
+      r = await fetch(`/api/store/${targetStore}/bookings/${state.editId}`, {
         method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
         body:JSON.stringify(body)
       });
     } else {
-      r = await fetch(`/api/store/${state.store}/bookings`, {
+      r = await fetch(`/api/store/${targetStore}/bookings`, {
         method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+state.token},
         body:JSON.stringify(body)
       });
@@ -882,8 +939,9 @@ async function cancelBooking(id) {
   const tablesStr = (booking?.tables || []).join('、');
   if (!confirm(`确定取消 ${tablesStr} 的预订吗？\n${booking?.name} · ${booking?.date} ${booking?.time}`)) return;
   
+  const targetStore = booking?._storeId || state.store;
   try {
-    const r = await fetch(`/api/store/${state.store}/bookings/${id}`, {
+    const r = await fetch(`/api/store/${targetStore}/bookings/${id}`, {
       method:'DELETE', headers:{'Authorization':'Bearer '+state.token}
     });
     const d = await r.json();
@@ -1190,19 +1248,21 @@ async function loadAdminStoreList() {
 }
 
 function exportHistory() {
-  fetch(`/api/store/${state.store}/history/export`, {
+  const url = state.isAdmin ? '/api/admin/history/export' : `/api/store/${state.store}/history/export`;
+  const fname = state.isAdmin ? `全店历史记录_${new Date().toISOString().slice(0,10)}.csv` : `${state.storeName}_历史记录_${state.date||new Date().toISOString().slice(0,10)}.csv`;
+  fetch(url, {
     headers:{'Authorization':'Bearer '+state.token}
   }).then(r => {
     if (!r.ok) { toast('导出失败 ('+r.status+')', 'error'); return; }
     r.blob().then(blob => {
-      const url = URL.createObjectURL(blob);
+      const url2 = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `${state.storeName}_历史记录_${state.date||new Date().toISOString().slice(0,10)}.csv`;
+      a.href = url2;
+      a.download = fname;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url2);
       toast('导出成功', 'success');
     });
   }).catch(e => toast('导出失败: '+e.message, 'error'));

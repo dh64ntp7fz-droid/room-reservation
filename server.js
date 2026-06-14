@@ -419,6 +419,55 @@ app.get('/api/store/:storeId/history/export', async (req, res) => {
   }
 });
 
+// ── 管理员全店统一视图 ──
+app.get('/api/admin/unified', async (req, res) => {
+  const data = await loadData();
+  const user = requireAuth(req, res, data);
+  if (!user) return;
+  if (user.role !== 'admin') return res.status(403).json({ error: '需要管理员权限' });
+  const { date } = req.query;
+  let storesData = [];
+  for (const [id, store] of Object.entries(data.stores)) {
+    let bookings = store.bookings || [];
+    if (date) bookings = bookings.filter(b => b.date === date);
+    storesData.push({
+      id, name: store.name, tables: store.tables || [],
+      bookings, wecom_webhook: store.wecom_webhook || '',
+      phone: store.phone || '', nav_url: store.nav_url || '', parking: store.parking || ''
+    });
+  }
+  res.json(storesData);
+});
+
+// ── 管理员全店历史导出 ──
+app.get('/api/admin/history/export', async (req, res) => {
+  try {
+    const data = await loadData();
+    const user = requireAuth(req, res, data);
+    if (!user) return;
+    if (user.role !== 'admin') return res.status(403).json({ error: '需要管理员权限' });
+    const headers = ['门店','日期','时间','桌台','姓名','手机','人数','备注','状态','创建人','创建时间','取消/归档时间'];
+    const rows = [];
+    for (const [storeId, store] of Object.entries(data.stores)) {
+      for (const b of (store.history || [])) {
+        const dp = (b.date || '').split('-');
+        const ds = `${dp[0]}年${parseInt(dp[1])}月${parseInt(dp[2])}日`;
+        const status = b.status === 'cancelled' ? '已取消' : (b.status === 'auto_reset' ? '已清空' : '已完成');
+        rows.push([store.name, ds, b.time, (b.tables||[]).join('/'), b.name, b.phone||'', String(b.people), b.note||'', status, b.createdBy||'', b.createdAt||'', b.cancelledAt||b.archivedAt||'']);
+      }
+    }
+    rows.sort((a, b) => a[0].localeCompare(b[0]) || b[1].localeCompare(a[1]));
+    const csv = '\ufeff' + [headers.join(','), ...rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','))].join('\n');
+    const fname = 'all_stores_history_' + getDateString() + '.csv';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + fname + '"');
+    res.send(csv);
+  } catch(e) {
+    console.error('全店导出失败:', e);
+    res.status(500).json({ error: '导出失败: ' + e.message });
+  }
+});
+
 // ── 管理后台 API ──
 app.post('/api/store/:storeId/tables', async (req, res) => {
   const data = await loadData();
