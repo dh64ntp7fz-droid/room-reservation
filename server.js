@@ -248,7 +248,7 @@ app.get('/api/store/:storeId', async (req, res) => {
   const data = await loadData();
   const store = data.stores[req.params.storeId];
   if (!store) return res.status(404).json({ error: '门店不存在' });
-  res.json({ id: store.id, name: store.name, tables: store.tables, wecom_webhook: store.wecom_webhook || '', phone: store.phone || '', nav_url: store.nav_url || '', parking: store.parking || 2 });
+  res.json({ id: store.id, name: store.name, tables: store.tables, wecom_webhook: store.wecom_webhook || '', phone: store.phone || '', nav_url: store.nav_url || '', parking: store.parking || '' });
 });
 
 app.get('/api/store/:storeId/bookings', async (req, res) => {
@@ -513,7 +513,7 @@ app.put('/api/store/:storeId/settings', async (req, res) => {
   }
   // 导航地址
   if (req.body.parking !== undefined) {
-    store.parking = parseInt(req.body.parking) || 2;
+    store.parking = String(req.body.parking || '');
     const metaKey = 'store_parking_' + req.params.storeId;
     try {
       await supabase.from('meta').delete().eq('key', metaKey);
@@ -641,9 +641,9 @@ async function sendWecomNotification(type, booking, storeName, storeWebhook, sto
   if (type === 'created') {
     title = '🌞 包间预订成功';
     const navLine = storeNavUrl ? '\n• [点击导航](' + storeNavUrl + ')' : '';
-    const parking = storeParking || 2;
+    const parkingLine = storeParking ? `\n• 免费停车:${storeParking}` : '';
     const phoneLine = storePhone ? '\n• 服务电话:' + storePhone : '';
-    content = `尊敬的**${booking.name}**,您好!您已成功预订湘阁里辣(${storeName}):\n• 包间号/台号:**${tablesDisplay}**\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:**${phoneDisplay}**\n• 特别备注:${booking.note || '无'}\n• 免费停车:餐厅有地面停车场,消费免停${parking}小时${navLine}${phoneLine}\n\n湘阁里辣${storeName}全体伙伴恭候您的到来!`;
+    content = `尊敬的**${booking.name}**,您好!您已成功预订湘阁里辣(${storeName}):\n\n• 包间号/台号:**${tablesDisplay}**\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:**${phoneDisplay}**\n• 特别备注:${booking.note || '无'}${parkingLine}${navLine}${phoneLine}\n\n湘阁里辣${storeName}全体伙伴恭候您的到来!`;
   } else if (type === 'deleted') {
     title = '⚠️ 预订已取消';
     content = `尊敬的${booking.name},您好!\n您已取消湘阁里辣(${storeName})的预订:\n• 包间号/台号:${tablesDisplay}\n• 预定时间:${month}月${day}号 ${booking.time}\n• 预定人数:${booking.people}人\n• 预留手机:${booking.phone || '无'}\n• 特别备注:${booking.note || '无'}\n\n感谢您的理解,欢迎下次光临!`;
