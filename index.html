@@ -873,9 +873,12 @@ function buildTableCheckGrid() {
   const formTime = document.getElementById('formTime').value;
   const formMinutes = timeToMinutes(formTime);
   
-  // 只禁用同一日期、同一桌台、且时间冲突（前后2小时内）的
+  // 只禁用同一门店、同一日期、同一桌台且时间冲突（前后2小时内）的
+  const relevantBookings = state.isAdmin
+    ? state.bookings.filter(b => b._storeId === state.currentStore)
+    : state.bookings;
   const bookedTables = new Set();
-  state.bookings.forEach(b => {
+  relevantBookings.forEach(b => {
     if (b.id === state.editId) return;
     if (b.date !== formDate) return;
     const bMinutes = timeToMinutes(b.time);
