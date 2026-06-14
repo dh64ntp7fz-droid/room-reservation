@@ -111,7 +111,7 @@ async function loadData() {
       stores[sId].wecom_webhook = metaObj['wecom_webhook_' + sId] || '';
       stores[sId].phone = metaObj['store_phone_' + sId] || '';
       stores[sId].nav_url = metaObj['store_nav_url_' + sId] || '';
-      stores[sId].parking = parseInt(metaObj['store_parking_' + sId]) || 2;
+      stores[sId].parking = metaObj['store_parking_' + sId] || '';
     }
 
     dataCache = { stores, users, tokens, meta: metaObj };
