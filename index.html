@@ -729,15 +729,16 @@ function renderGrid() {
   const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
   
   if (state.isAdmin && state.allStoresData) {
-    // ★ 管理员视图：按门店分组显示
+    // ★ 管理员视图：按门店分组显示（外层切换为block布局避免grid挤压）
+    grid.style.display = 'block';
     let html = '';
     for (const store of state.allStoresData) {
       const storeBookings = store.bookings || [];
       const storeTables = store.tables || [];
       if (!storeTables.length) continue;
-      html += `<div style="${html ? 'margin-top:32px' : ''}">
-        <div class="section-title" style="font-size:16px;color:var(--primary);margin-bottom:10px">🏪 ${store.name}</div>
-        <div class="room-grid">`;
+      html += `<div style="${html ? 'margin-top:32px;padding-top:8px;border-top:1px dashed #ddd' : ''}">
+        <div style="font-size:17px;font-weight:700;color:var(--primary);margin-bottom:12px;display:flex;align-items:center;gap:8px">🏪 ${store.name}</div>
+        <div class="room-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">`;
       for (const t of storeTables) {
         const catClass = getCatClass(t);
         const allToday = storeBookings.filter(b => (b.tables || []).includes(t.name));
@@ -751,7 +752,8 @@ function renderGrid() {
     return;
   }
   
-  // ★ 普通视图
+  // ★ 普通视图（恢复grid布局）
+  grid.style.display = '';
   grid.innerHTML = state.tables.map(t => {
     const catClass = getCatClass(t);
     const allToday = state.bookings
